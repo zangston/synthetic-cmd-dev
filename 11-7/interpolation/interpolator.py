@@ -37,11 +37,12 @@ def isoInterp(mass, age_idx, iso_grid, filters):
     # extract closest star to mass
     s1_idx = np.where(abs(iso_grid[age_idx].points['mass'] - mass) == min(abs(iso_grid[age_idx].points['mass'] - mass)))[0].item()
     s1_mass = np.round(iso_grid[age_idx].points[s1_idx]['mass'], decimals=3)
+    s1_lum = np.round(iso_grid[age_idx].points[s1_idx]['L'], decimals=3)
     s1_teff = np.round(iso_grid[age_idx].points[s1_idx]['Teff'], decimals=3)
     s1_logg = np.round(iso_grid[age_idx].points[s1_idx]['logg'], decimals=3)
     s1_filt1 = np.round(iso_grid[age_idx].points[s1_idx][filters[0]], decimals=3)
     s1_filt2 = np.round(iso_grid[age_idx].points[s1_idx][filters[1]], decimals=3)
-    s1 = [s1_mass, s1_teff, s1_logg, s1_filt1, s1_filt2]
+    s1 = [s1_mass, s1_lum, s1_teff, s1_logg, s1_filt1, s1_filt2]
 
     # extract next star to interpolate with
     if(s1_mass < mass):
@@ -50,24 +51,26 @@ def isoInterp(mass, age_idx, iso_grid, filters):
         s2_idx = s1_idx - 1
 
     s2_mass = np.round(iso_grid[age_idx].points[s2_idx]['mass'], decimals=3)
+    s2_lum = np.round(iso_grid[age_idx].points[s2_idx]['L'], decimals=3)
     s2_teff = np.round(iso_grid[age_idx].points[s2_idx]['Teff'], decimals=3)
     s2_logg = np.round(iso_grid[age_idx].points[s2_idx]['logg'], decimals=3)
     s2_filt1 = np.round(iso_grid[age_idx].points[s2_idx][filters[0]], decimals=3)
     s2_filt2 = np.round(iso_grid[age_idx].points[s2_idx][filters[1]], decimals=3)
-    s2 = [s2_mass, s2_teff, s2_logg, s2_filt1, s2_filt2]
+    s2 = [s2_mass, s2_lum, s2_teff, s2_logg, s2_filt1, s2_filt2]
 
     w1 = (s2_mass - mass) / (s2_mass - s1_mass)
     w2 = 1.0 - w1
 
     # Interpolate the properties
     s_mass = mass
+    s_lum = w1 * s1_lum + w2 * s2_lum
     s_teff = w1 * s1_teff + w2 * s2_teff
     s_logg = w1 * s1_logg + w2 * s2_logg
     s_filt1 = w1 * s1_filt1 + w2 * s2_filt1
     s_filt2 = w1 * s1_filt2 + w2 * s2_filt2
 
     # Store the interpolated values in s
-    s = [s_mass, s_teff, s_logg, s_filt1, s_filt2]
+    s = [s_mass, s_lum, s_teff, s_logg, s_filt1, s_filt2]
     return s
 
 # Precondition: age array is intialized, indeces of isochrones being interpolated between are indentified
@@ -81,13 +84,14 @@ def ageInterp(age, s1, a1, s2, a2, age_arr):
 
     # Interpolate the properties
     s_age = age
-    s_teff = w1 * s1[1] + w2 * s2[1]
-    s_logg = w1 * s1[2] + w2 * s2[2]
-    s_filt1 = w1 * s1[3] + w2 * s2[3]
-    s_filt2 = w1 * s1[4] + w2 * s2[4]
+    s_lum = w1 * s1[1] + w2 * s2[1]
+    s_teff = w1 * s1[2] + w2 * s2[2]
+    s_logg = w1 * s1[3] + w2 * s2[3]
+    s_filt1 = w1 * s1[4] + w2 * s2[4]
+    s_filt2 = w1 * s1[5] + w2 * s2[5]
 
     # Store the interpolated values in s
-    s = [s_teff, s_logg, s_filt1, s_filt2]
+    s = [s_lum, s_teff, s_logg, s_filt1, s_filt2]
 
     # Truncate values
     for i in range(len(s)):
