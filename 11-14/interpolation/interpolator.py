@@ -1,7 +1,8 @@
 import numpy as np
 
-# Precondition: isochrone grid and age array are initialized, isochrones include magnitudes for specified filters
-# Params: desired age, desired mass, isochrone grid, age array, two filters to use for CMD
+# Precondition: isochrone grid and age array (in log years) are initialized, isochrones include magnitudes for specified filters
+# Params: desired age (in megayears), desired mass, isochrone grid, age array, two filters to use for CMD
+# Return: interpolated star with luminosity in watts, effective temp in kelvin, log surface gravity, and magnitudes for two filters
 def interpolate(age, mass, iso_grid, age_arr, filters):
     
     # Identify which isochrones to interpolate along
