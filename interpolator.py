@@ -35,6 +35,11 @@ def findIsoIdx(age, age_arr):
 # Params: desired mass of interpolated star, grid of isochrones to interpolate along, filter magnitudes to interpolate between
 # Return: array of properties for a star with a certain mass and age
 def isoInterp(mass, age_idx, iso_grid, filters):
+    iso_mass_values = iso_grid[age_idx].points['mass']
+
+    if mass < min(iso_mass_values) or mass > max(iso_mass_values):
+        return None
+
     # extract closest star to mass
     s1_idx = np.where(abs(iso_grid[age_idx].points['mass'] - mass) == min(abs(iso_grid[age_idx].points['mass'] - mass)))[0].item()
     s1_mass = np.round(iso_grid[age_idx].points[s1_idx]['mass'], decimals=3)
