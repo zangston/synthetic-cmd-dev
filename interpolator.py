@@ -4,7 +4,7 @@ import numpy as np
 # Params: desired age (in megayears), desired mass, isochrone grid, age array, two filters to use for CMD
 # Return: interpolated star with luminosity in watts, effective temp in kelvin, log surface gravity, and magnitudes for two filters
 def interpolate(age, mass, iso_grid, age_arr, filters):
-    
+
     # Identify which isochrones to interpolate along
     idx_arr = findIsoIdx(age, age_arr)
     a1 = idx_arr[0]
@@ -15,9 +15,10 @@ def interpolate(age, mass, iso_grid, age_arr, filters):
     s2 = isoInterp(mass, a2, iso_grid, filters)
 
     # Interpolate along age between s1 and s2
-    s = ageInterp(age, s1, a1, s2, a2, age_arr)
-
-    return s
+    if s1 is not None and s2 is not None:
+        s = ageInterp(age, s1, a1, s2, a2, age_arr)
+        return s
+    return None
 
 # Precondition: age array initialized
 # Params: desired age of interpolated star, array of ages associated with isochrone grid
@@ -35,6 +36,16 @@ def findIsoIdx(age, age_arr):
 # Params: desired mass of interpolated star, grid of isochrones to interpolate along, filter magnitudes to interpolate between
 # Return: array of properties for a star with a certain mass and age
 def isoInterp(mass, age_idx, iso_grid, filters):
+
+    iso_mass_values = iso_grid[age_idx].points['mass']
+    
+    # Check if the desired mass is within the range of the isochrone
+    if mass < min(iso_mass_values) or mass > max(iso_mass_values):
+        # Handle the case where the desired mass is outside the range
+        print(f"Desired mass {mass} is outside the range of the isochrone.")
+        # You can return a default value or raise an exception based on your requirements
+        return None
+
     # extract closest star to mass
     s1_idx = np.where(abs(iso_grid[age_idx].points['mass'] - mass) == min(abs(iso_grid[age_idx].points['mass'] - mass)))[0].item()
     s1_mass = np.round(iso_grid[age_idx].points[s1_idx]['mass'], decimals=3)
