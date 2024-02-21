@@ -42,7 +42,7 @@ def isoInterp(mass, age_idx, iso_grid, filters):
     # Check if the desired mass is within the range of the isochrone
     if mass < min(iso_mass_values) or mass > max(iso_mass_values):
         # Handle the case where the desired mass is outside the range
-        print(f"Desired mass {mass} is outside the range of the isochrone.")
+        # print(f"Desired mass {mass} is outside the range of the isochrone.")
         # You can return a default value or raise an exception based on your requirements
         return None
 
