@@ -1,0 +1,5 @@
+interp-test: testing margin of error in interpolated values versus generated
+
+multiples: test CMDs with forced flux and mass ratios
+    again, it is noted that the binary sequence does not shift in a one-to-one manner with changing mass ratio
+    one-to-one shift along vertical axis is noted for changing flux ratio

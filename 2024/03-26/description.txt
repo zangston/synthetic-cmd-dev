@@ -1,0 +1,3 @@
+multiples: solved binary sequence issue by plotting unresolved binaries using only the color of the primary, as opposed to the combined color index
+
+age-spread: test CMDs for 5 Myr models with varying freefall timescales

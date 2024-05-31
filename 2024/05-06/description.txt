@@ -1,0 +1,1 @@
+measure spread on multiple CMDs of varing freefall time, cloud density, and age

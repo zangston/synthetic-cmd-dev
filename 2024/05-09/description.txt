@@ -1,0 +1,1 @@
+generate plots and measure magnitude spread as a function of freefall time, cloud density, and cluster time

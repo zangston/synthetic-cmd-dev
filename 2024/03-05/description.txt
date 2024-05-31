@@ -1,0 +1,3 @@
+switched to baraffe model to reconcile low mass ratio cutoff, using proprietary baraffe model that goes down to 0.01 Msun
+
+binary sequence still appears too strong for intermediate to higher mass ratio unresolved binaries

@@ -1,0 +1,3 @@
+attempting to work around mass ratio problem for unresolved binaries
+
+merged-model: test CMD using SPISEA's included merged isochrone model
