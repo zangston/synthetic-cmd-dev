@@ -1,0 +1,3 @@
+multi-evo: created CMD/HR-diagram for multiple evolution models at various ages
+    models: mist, baraffe, ekstrom, parsec, pisa
+    ages (Myr): 1, 3, 5

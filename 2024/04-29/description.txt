@@ -1,0 +1,2 @@
+color bins approach introduces issues with isochrone curves bending back on themselves, 
+    attempting a bounding box approach the excludes low and high mass points while measuring spread

@@ -1,0 +1,2 @@
+implement new control flow to return None for stars with mass outside of isochrone model mass range
+revise diagram generator to skip stars that have "None" type

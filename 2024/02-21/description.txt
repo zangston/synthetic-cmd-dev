@@ -1,0 +1,5 @@
+still diagnosing binary sequence artifact
+
+created diagrams for binary systems with forced mass ratios
+binary sequences appear to cut off more and more for lower mass ratios
+binary sequences do not shift linearly with decreasing mass ratio

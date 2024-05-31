@@ -1,0 +1,5 @@
+attempting to find a way to work around isochrone slope problem: shape of isochrones introduce an intrinsic spread
+test CMDs and measure magnitude spread with multiple filter sets, as well as on HR-diagram
+    magnitude spread calculated by binning stars into temperature bins and averaging out the standard deviations across bins
+
+created a plot of spread vs freefall time for F115-F182 vs F182

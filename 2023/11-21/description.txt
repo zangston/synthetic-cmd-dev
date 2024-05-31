@@ -1,0 +1,5 @@
+interpolation: testing programmatic implemetation of interpolator as a python script
+
+1p0myr-near-inst-interp: test CMD on 1.6 Myr MIST model at e_ff = 1.00
+
+20myr-spread-interp: test CMD on 20 Myr MIST model at e_ff = 0.01

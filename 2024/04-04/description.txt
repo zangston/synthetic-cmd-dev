@@ -1,0 +1,4 @@
+change diagram generation code to plot CMDs using new method
+
+measure magnitude spread in 5 Myr CMD while varying freefall timescale
+    magnitude spread measured as a standard deviation for stars within 0.1-0.3 Msun mass range, including unresolved binaries whose primary falls within that same range
