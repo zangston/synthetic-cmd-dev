@@ -1,0 +1,3 @@
+isochrone-grid-demo: trying out the SPISEA feature for passing in parameters as arrays to make an isochrone grid
+
+interpolation-poc: hand-interpolation of a single 10 Msun, 5.3 Myr star

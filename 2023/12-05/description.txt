@@ -1,0 +1,1 @@
+1p6myr-near-inst: test CMD with unresolved binaries, including code that excludes stars outside of isochrone model mass range

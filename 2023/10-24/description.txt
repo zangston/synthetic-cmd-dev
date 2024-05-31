@@ -1,0 +1,3 @@
+interpolation: implementation of interpolation scheme inside of Jupyter Notebook
+
+jwst-plots: honestly, not too sure. i know it uses sam's jwst data, but that's all i really understood from the email exchange
