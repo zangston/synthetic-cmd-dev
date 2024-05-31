@@ -1,0 +1,11 @@
+CMD grids: grid of CMDs as a function of cluster time and freefall timescale
+
+1.5myr-baraffe-sigma0p1-f003: example 1.5 Myr Baraffe CMD for e_ff = 0.03, sigma = 0.1 g/cm^3 generated for figures 11-13 in thesis results section
+
+interp-test: Interpolation error example for figure 20 in thesis future works section
+
+Interpolation Example: diagram showing linear interpolation scheme between mass and age used for figure 9 in thesis method section
+
+isochrone-grid: Isochrone grid diagrams used for Figures 8 and 10 in thesis method section
+
+Software versions: Python software package version numbers, reported in thesis method section
