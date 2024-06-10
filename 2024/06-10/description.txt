@@ -1,0 +1,3 @@
+attempting to fix interpolation error by defining interpolator to convert magnitudes to flux and interpolating in flux
+
+new interpolator appears to actually work less effectively than the old one, and only shows marginal increase in accuracy for the 0.05-0.11 Msun mass range
