@@ -60,14 +60,14 @@ def generate_cmd(AKs, dist, evo_model, atm_func, red_law, filt_list, filters, is
     log_age_arr = np.log10(level_age_arr)
 
     # create isochrone grid - if this is the first time, then this is going to take an hour lmfao
-    instances = np.empty(len(log_age_arr), dtype=object)
+    iso_grid = np.empty(len(log_age_arr), dtype=object)
 
     for i in range(len(log_age_arr)):
         my_iso = synthetic.IsochronePhot(log_age_arr[i], AKs, dist, metallicity=metallicity,
                                 evo_model=evo_model, atm_func=atm_func,
                                 red_law=red_law, filters=filt_list,
                                     iso_dir=iso_dir)
-        instances[i] = my_iso
+        iso_grid[i] = my_iso
             
     print("isochrone generation done")
 
@@ -80,37 +80,16 @@ def generate_cmd(AKs, dist, evo_model, atm_func, red_law, filt_list, filters, is
     fig, axes = py.subplots(figsize=(15, 10))
     py.subplot(1, 2, 1)
 
-    # Define a colormap
-    cmap = plt.get_cmap('coolwarm')
-
-    for i in range(len(log_age_arr)):
-        color = cmap(i / (len(log_age_arr) - 1))  # Assign color based on index and colormap
-        py.plot(instances[i].points[filters[0]] - instances[i].points[filters[1]], 
-            instances[i].points[filters[1]], color=color, label='')
-        
-    py.xlabel('F115W - F200W')
-    py.ylabel('F200W')
-    py.gca().invert_yaxis()
-
-    # Create colorbar legend
-    norm = Normalize(vmin=min(level_age_arr), vmax=max(level_age_arr))
-    sm = ScalarMappable(norm=norm, cmap=cmap)
-    sm.set_array([])
-    cbar = plt.colorbar(sm)
-    cbar.set_label('Age (millions of years)')
-    cbar.set_ticks(level_age_arr)
-    cbar.set_ticklabels([f'{age/1e6:.1f}' for age in level_age_arr])
+    plot_iso_grid(iso_grid, log_age_arr, level_age_arr, filters)
 
     level_ages_myr = level_ages / 1e6
-    # print(level_ages_myr)
 
     # create array of stars
     stars = np.empty(len(cluster_table), dtype=object)
 
     # perform interpolation for each star
     for i in range(len(stars)):
-        # print(str(i) + " " + str(level_ages_myr[i]) + " " + str(masses[i]))
-        stars[i] = interpolator.interpolate(level_ages_myr[i], masses[i], instances, log_age_arr, filters)
+        stars[i] = interpolator.interpolate(level_ages_myr[i], masses[i], iso_grid, log_age_arr, filters)
         
     # convert luminosity values to solar luminosities
     watts_to_lsun = 1.0 / (3.846e26) # conversion factor for watts to Lsun
@@ -126,7 +105,7 @@ def generate_cmd(AKs, dist, evo_model, atm_func, red_law, filt_list, filters, is
     for i in range(len(companions)):
         if stars[i + first_binary] is None:
             continue
-        companions[i] = interpolator.interpolate(level_ages_myr[i + first_binary], compMasses[i], instances, log_age_arr, filters)
+        companions[i] = interpolator.interpolate(level_ages_myr[i + first_binary], compMasses[i], iso_grid, log_age_arr, filters)
 
     for i in range(len(companions)):
         if companions[i] is None:
@@ -138,67 +117,26 @@ def generate_cmd(AKs, dist, evo_model, atm_func, red_law, filt_list, filters, is
 
     # plot primaries
     py.subplot(1, 2, 1)
-
-    # Define a colormap
-    cmap = plt.get_cmap('coolwarm')
-
-    for i in range(len(log_age_arr)):
-        color = cmap(i / (len(log_age_arr) - 1))  # Assign color based on index and colormap
-        py.plot(instances[i].points[filters[0]] - instances[i].points[filters[1]], 
-            instances[i].points[filters[1]], color=color, label='')
+    plot_iso_grid(iso_grid, log_age_arr, level_age_arr, filters) 
         
     for i in range(0, first_binary):
         if stars[i] is None:
             continue
         py.plot(stars[i][3] - stars[i][4], stars[i][4], marker='o', markersize=1, color='k')
-        
-    py.xlabel('F115W - F200W')
-    py.ylabel('F200W')
-    py.gca().invert_yaxis()
 
     py.title('CMD of primary stars only')
-
-    # Create colorbar legend
-    norm = Normalize(vmin=min(level_age_arr), vmax=max(level_age_arr))
-    sm = ScalarMappable(norm=norm, cmap=cmap)
-    sm.set_array([])
-    cbar = plt.colorbar(sm)
-    cbar.set_label('Age (millions of years)')
-    cbar.set_ticks(level_age_arr)
-    cbar.set_ticklabels([f'{age/1e6:.1f}' for age in level_age_arr])
 
     # plot companions
     py.subplot(1, 2, 2)
 
-    # Define a colormap
-    cmap = plt.get_cmap('coolwarm')
-
-    for i in range(len(log_age_arr)):
-        color = cmap(i / (len(log_age_arr) - 1))  # Assign color based on index and colormap
-        py.plot(instances[i].points[filters[0]] - instances[i].points[filters[1]], 
-            instances[i].points[filters[1]], color=color, label='')
+    plot_iso_grid(iso_grid, log_age_arr, level_age_arr, filters) 
         
     for i in range(len(companions)):
         if companions[i] is None:
             continue
         py.plot(companions[i][3] - companions[i][4], companions[i][4], marker='o', markersize=1, color='k')
-        
-    py.xlabel('F115W - F200W')
-    py.ylabel('F200W')
-    py.gca().invert_yaxis()
 
     py.title('CMD of companion stars only')
-
-    # Create colorbar legend
-    norm = Normalize(vmin=min(level_age_arr), vmax=max(level_age_arr))
-    sm = ScalarMappable(norm=norm, cmap=cmap)
-    sm.set_array([])
-    cbar = plt.colorbar(sm)
-    cbar.set_label('Age (millions of years)')
-    cbar.set_ticks(level_age_arr)
-    cbar.set_ticklabels([f'{age/1e6:.1f}' for age in level_age_arr])
-        
-    plt.show()
 
     # combine magnitudes on binary stars
     unresolved_binaries = np.empty(len(companions), dtype=object)
@@ -219,18 +157,9 @@ def generate_cmd(AKs, dist, evo_model, atm_func, red_law, filt_list, filters, is
 
     fig, axes = py.subplots(figsize=(15, 10))
 
-    fig, axes = py.subplots(figsize=(15, 10))
-
+    # CMD with resolved binaries
     py.subplot(1, 2, 1)
-
-    # CMD with unresolved binaries
-    # Define a colormap
-    cmap = plt.get_cmap('coolwarm')
-    
-    for i in range(len(log_age_arr)):
-        color = cmap(i / (len(log_age_arr) - 1))  # Assign color based on index and colormap
-        py.plot(instances[i].points[filters[0]] - instances[i].points[filters[1]], 
-            instances[i].points[filters[1]], color=color, label='')
+    plot_iso_grid(iso_grid, log_age_arr, level_age_arr, filters)
 
     # plot single stars first
     for i in range(0, first_binary):
@@ -238,17 +167,47 @@ def generate_cmd(AKs, dist, evo_model, atm_func, red_law, filt_list, filters, is
             continue
         py.plot(stars[i][3] - stars[i][4], stars[i][4], marker='o', markersize=1, color='k')
 
-    # plot unresolve binaries
+    # plot companions
+    for i in range(len(companions)):
+        if companions[i] is None:
+            continue
+        py.plot(companions[i][3] - companions[i][4], companions[i][4], marker='o', markersize=1, color='k')
+
+    py.title('CMD with resolved binary systems')
+
+    # CMD with unresolved binaries
+    py.subplot(1, 2, 2)
+    plot_iso_grid(iso_grid, log_age_arr, level_age_arr, filters)
+
+    # plot single stars first
+    for i in range(0, first_binary):
+        if stars[i] is None:
+            continue
+        py.plot(stars[i][3] - stars[i][4], stars[i][4], marker='o', markersize=1, color='k')
+
+    # plot unresolved binaries
     for i in range(len(unresolved_binaries)):
         if unresolved_binaries[i] is None:
             continue
         py.plot(stars[first_binary + i][3] - stars[first_binary + i][4], 
                 unresolved_binaries[i][1], marker='o', markersize=1, color='green')
 
+    py.title('CMD with unresolved binary systems')
+        
+    plt.show()
+
+def plot_iso_grid(iso_grid, log_age_arr, level_age_arr, filters):
+    # Define a colormap
+    cmap = plt.get_cmap('coolwarm')
+
+    for i in range(len(log_age_arr)):
+        color = cmap(i / (len(log_age_arr) - 1))  # Assign color based on index and colormap
+        py.plot(iso_grid[i].points[filters[0]] - iso_grid[i].points[filters[1]], 
+            iso_grid[i].points[filters[1]], color=color, label='')
+        
     py.xlabel('F115W - F200W')
     py.ylabel('F200W')
     py.gca().invert_yaxis()
-    py.title('CMD with unresolved binary systems')
 
     # Create colorbar legend
     norm = Normalize(vmin=min(level_age_arr), vmax=max(level_age_arr))
@@ -258,5 +217,3 @@ def generate_cmd(AKs, dist, evo_model, atm_func, red_law, filt_list, filters, is
     cbar.set_label('Age (millions of years)')
     cbar.set_ticks(level_age_arr)
     cbar.set_ticklabels([f'{age/1e6:.1f}' for age in level_age_arr])
-        
-    plt.show()
