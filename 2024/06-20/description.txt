@@ -1,0 +1,3 @@
+moving cmd generation code to a callable python script
+
+so far, the code has largely been one-for-one copy-pasted into the cmd_generator.py script. further iterations will parameterize this script
