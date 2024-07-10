@@ -2,3 +2,5 @@
 isochrones/
 isochrones*
 __pycache__/
+*.fits
+*.dat
