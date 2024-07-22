@@ -1,4 +1,5 @@
 creating a merged model that includes the low mass range of the Baraffe evolution model
+    the files for this week didn't work because i ran into some formatting issues
 
 merged-model/generate_model: reading baraffe data lines and prepending to existing merged model files
 
