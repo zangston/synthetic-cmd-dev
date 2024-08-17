@@ -1,4 +1,4 @@
-creating a merged model that includes the low mass range of the Baraffe evolution model
+creating a merged model that includes the low mass range of the Baraffe evolution model - this iteration not successful
 
 merged-model/generate_model: reading baraffe data lines and prepending to existing merged model files
 
