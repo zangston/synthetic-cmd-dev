@@ -12,10 +12,13 @@ from astropy.io import fits
 from astropy.table import Table
 import numpy as np
 
+import parse_dat_file as parser
+
 def main(targetFilepath, baraffeFilepath, mergedFilepath):    
     
     # Open files and extract data tables
-    baraffeData = fits.open(baraffeFilepath)[1].data
+    # baraffeData = fits.open(baraffeFilepath)[1].data
+    baraffeData = parser.parse_dat_file(baraffeFilepath)
     mergedData = fits.open(mergedFilepath)[1].data
 
     # Create column array
