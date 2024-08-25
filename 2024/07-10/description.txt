@@ -1,0 +1,15 @@
+<<<<<<< HEAD
+creating a merged model that includes the low mass range of the Baraffe evolution model - this iteration not successful
+=======
+creating a merged model that includes the low mass range of the Baraffe evolution model
+    the files for this week didn't work because i ran into some formatting issues
+>>>>>>> 7597060b70682e0aceaccc6ae231d6731b3af59e
+
+merged-model/generate_model: reading baraffe data lines and prepending to existing merged model files
+
+merged-model-test.ipynb: python script that calls synthetic CMD generator using the new merged model
+    current not working - running into some formatting troubles with isochrone data files
+
+merged-model-poc: plots of constituent isochrone tracks to show what the finished model should look like
+
+merged-model-old: CMD using old merged model
