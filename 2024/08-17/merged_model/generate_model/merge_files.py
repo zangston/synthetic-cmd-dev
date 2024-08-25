@@ -15,10 +15,9 @@ def main(target_filepath, baraffe_filepath, merged_filepath):
     baraffe_file = fits.open(baraffe_filepath)
     merged_file = fits.open(merged_filepath)
 
-    print("Baraffe: ")
-    baraffe_file.info()
-    print("Merged: ")
-    merged_file.info()
+    baraffe_data = baraffe_file[1]
+    print(baraffe_data)
+    merged_data = merged_file[1]
 
 # def populate_columns():
 
