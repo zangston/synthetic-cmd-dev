@@ -1,2 +1,0 @@
-origins-setup: testing installed packages, Juan's fork of SPISEA, and nbody-to-SPISEA conversion
-jwst-hr: creating a sample CMD using JWST filters and SPISEA cluster generation
