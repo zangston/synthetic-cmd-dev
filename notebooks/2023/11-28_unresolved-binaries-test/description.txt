@@ -2,4 +2,6 @@ f115: test CMD using F115-F182 color index vs F182 magnitude, for 1.6 Myr e_ff =
 
 multples: test CMD with unresolved binaries
 
+scratch/wyz5rge/synthetic-hr/2023/12-05/1p6myr-near-inst.ipynb
+
 20myr-soread-toss-low-mass: 20 Myr model with low-mass stars outside of isochrone mass range tossed, which were causing runtime errors
