@@ -1,4 +1,0 @@
-attempting to diagnose apparent problem in binary sequence
-    binary sequence appears too strong at high flux ratios, when expected to be diffuse
-
-generated companion-to-primary mass ratio histograms

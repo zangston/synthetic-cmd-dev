@@ -1,0 +1,2 @@
+still trying to create a merged model - not much progress made this year because i was busy with work and origins was down this weekend
+    this first attempt at writing a script that merges the files sucked because it was mostly written with AI
