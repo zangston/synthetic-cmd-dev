@@ -138,7 +138,25 @@ class ChiSquaredFitter:
         chi2_threshold = chi2.ppf(confidence, df=dof)
 
         # Find acceptable region points
+                # Find acceptable region points
         acceptable_results = [r for r in grid_results_sorted if r['chi2'] <= chi2_threshold]
+
+        if not acceptable_results:
+            # No acceptable region, store Nones and output empty plot
+            self.plot_results(index, grid_results, best_fit, true_av, true_mass, chi2_threshold)
+
+            return {
+                'index': index,
+                'best_mass': best_fit['mass'],
+                'best_AV': best_fit['AV'],
+                'mass_min': None,
+                'mass_max': None,
+                'AV_min': None,
+                'AV_max': None,
+                'intersects': None,
+                'min_chi2': min_chi2
+            }
+
         acceptable_masses = [r['mass'] for r in acceptable_results]
         acceptable_AVs = [r['AV'] for r in acceptable_results]
 
