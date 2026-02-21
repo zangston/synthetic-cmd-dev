@@ -306,16 +306,20 @@ class ChiSquaredFitterUnified:
         best = grid_arr[best_idx]
         min_chi2 = float(best["chi2"])
 
-        # Threshold for "acceptable region exists"
-        # Your previous logic: dof = n_obs - 2. Special-case A1 (2 obs -> dof=0 invalid).
-        if self.cfg.mode == "cmd_a1":
-            dof = 1
-        else:
-            dof = max(1, len(mags) - 2)
-
-        chi2_threshold = float(chi2.ppf(self.conf, df=dof))
+        # Confidence region in (mass, AV) parameter space using Δχ² with df=2 parameters
+        # This is valid even when Nobs==2 (A1/B1).
+        dof_gof = len(mags) - 2  # for GOF test only (may be 0)
+        delta_chi2 = float(chi2.ppf(self.conf, df=2))  # df=2 because parameters are (mass, AV)
+        chi2_threshold = min_chi2 + delta_chi2
 
         acceptable = grid_arr[grid_arr["chi2"] <= chi2_threshold]
+
+        # Optional: GOF "passes_gof" only defined when dof_gof >= 1
+        passes_gof = None
+        p_value = None
+        if dof_gof >= 1:
+            p_value = float(chi2.sf(min_chi2, df=dof_gof))  # survival function = 1-CDF
+            passes_gof = bool(p_value > (1.0 - self.conf))   # analogous to your old cutoff
 
         if acceptable.size == 0:
             return {
@@ -453,8 +457,8 @@ def plot_identity_and_error_hist(
     df_use["mass_pct_error"] = 100.0 * (df_use["best_mass"] - df_use["true_mass"]) / df_use["true_mass"]
     df_use["av_pct_error"] = 100.0 * (df_use["best_AV"] - df_use["true_AV"]) / df_use["true_AV"]
 
-    # Acceptance-region exists marker
-    df_use["has_accept_region"] = df_use[["mass_min", "mass_max", "AV_min", "AV_max"]].notnull().all(axis=1)
+    # "passes_gof" is only meaningful when dof>=1. For dof==0 runs this will be NA.
+    df_use["has_accept_region"] = df_use["passes_gof"] == True
 
     # Identity plots (color-coded by accept-region existence)
     # (small points + opacity, as you’ve been doing)
@@ -837,6 +841,8 @@ def run_one_fit(
             "min_chi2",
             "chi2_threshold",
             "dof",
+            "passes_gof",
+            "p_value",
         ]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         if write_header:
@@ -863,21 +869,25 @@ def run_one_fit(
 
                     # Build mags/errs according to run
                     if cfg.mode == "cmd_a1":
-                        # Use only F162M,F182M mags/errs
                         mags = [row["F162M"], row["F182M"]]
                         errs = [row["e162"], row["e182"]]
-                    elif cfg.name in ("B1",):
-                        mags = [row["F162M"], row["F182M"]]
-                        errs = [row["e162"], row["e182"]]
-                    elif cfg.name in ("C1", "JWST_ALL"):
-                        mags = [row["F162M"], row["F182M"], row["F200W"]]
-                        errs = [row["e162"], row["e182"], row["e200"]]
-                    elif cfg.name in ("JWST_HST",):
-                        mags = [row["F162M"], row["F182M"], row["F200W"], row["F125W"], row["F139M"], row["F160W"]]
-                        errs = [row["e162"], row["e182"], row["e200"], row["e125"], row["e139"], row["e160"]]
                     else:
-                        # fallback for mags-only runs (use cfg.filters length; assume order 162,182,200,125,139,160)
-                        raise ValueError(f"Unknown run name mapping for mags/errs: {cfg.name}")
+                        # mags-only: build mags/errs in the same order as cfg.filters
+                        # Map isochrone filter names -> .dat columns
+                        filt_to_dat = {
+                            "m_jwst_F162M": ("F162M", "e162"),
+                            "m_jwst_F182M": ("F182M", "e182"),
+                            "m_jwst_F200W": ("F200W", "e200"),
+                            "m_hst_f125w":  ("F125W", "e125"),
+                            "m_hst_f139m":  ("F139M", "e139"),
+                            "m_hst_f160w":  ("F160W", "e160"),
+                        }
+                        mags = []
+                        errs = []
+                        for f in cfg.filters:
+                            m_key, e_key = filt_to_dat[f]
+                            mags.append(row[m_key])
+                            errs.append(row[e_key])
 
                     # Apply *same* skip predicate as runner (important for cross-match)
                     if should_skip_runner_style(mags, errs, row["true_AV"], row["true_mass"]):
@@ -962,32 +972,31 @@ def main():
     # Define the run ladder
     runs: List[FitRunConfig] = [
         FitRunConfig(
-            name="A1",
-            # Need these to build the SPISEA isochrone columns for F162M/F182M
+            name="jwst_cmd_F162MminusF182M_vs_F182M",
             filt_list=["jwst,F162M", "jwst,F182M"],
             filters=["m_jwst_F162M", "m_jwst_F182M"],
             mode="cmd_a1",
         ),
         FitRunConfig(
-            name="B1",
+            name="jwst_mags_F162M_F182M",
             filt_list=["jwst,F162M", "jwst,F182M"],
             filters=["m_jwst_F162M", "m_jwst_F182M"],
             mode="mags",
         ),
         FitRunConfig(
-            name="C1",
+            name="jwst_mags_F162M_F182M_F200W",
             filt_list=["jwst,F162M", "jwst,F182M", "jwst,F200W"],
             filters=["m_jwst_F162M", "m_jwst_F182M", "m_jwst_F200W"],
             mode="mags",
         ),
         FitRunConfig(
-            name="JWST_ALL",
+            name="jwst_mags_all",
             filt_list=["jwst,F162M", "jwst,F182M", "jwst,F200W"],
             filters=["m_jwst_F162M", "m_jwst_F182M", "m_jwst_F200W"],
             mode="mags",
         ),
         FitRunConfig(
-            name="JWST_HST",
+            name="jwst_hst_mags_all",
             filt_list=[
                 "jwst,F162M", "jwst,F182M", "jwst,F200W",
                 "wfc3,ir,f125w", "wfc3,ir,f139m", "wfc3,ir,f160w",
