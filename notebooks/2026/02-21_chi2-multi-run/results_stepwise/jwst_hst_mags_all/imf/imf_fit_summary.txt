@@ -1,9 +1,0 @@
-Run: jwst_hst_mags_all
-Rows (all best-fits): 739
-Rows (passes GOF):    370
-
-Power-law (all): alpha=1.180864
-Power-law (passes GOF): alpha=1.334382
-
-Log-normal (all): mc=0.092526 Msun, sigma=0.660294 dex
-Log-normal (passes GOF): mc=0.086432 Msun, sigma=0.564704 dex

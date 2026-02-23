@@ -1,9 +1,0 @@
-Run: jwst_mags_F162M_F182M
-Rows (all best-fits): 989
-Rows (passes GOF):    N/A (GOF undefined or none passed)
-
-Power-law (all): alpha=1.247341
-Power-law (passes GOF): N/A
-
-Log-normal (all): mc=0.098766 Msun, sigma=0.604249 dex
-Log-normal (passes GOF): N/A
