@@ -1,6 +1,10 @@
 .ipynb_checkpoints/
+__pycache__/
+
 isochrones/
 isochrones*
-__pycache__/
+
 *.fits
 *.dat
+
+*.log
