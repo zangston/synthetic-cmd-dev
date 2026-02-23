@@ -1,0 +1,9 @@
+Run: jwst_cmd_F162MminusF182M_vs_F182M
+Rows (all best-fits): 989
+Rows (passes GOF):    N/A (GOF undefined or none passed)
+
+Power-law (all): alpha=1.250728
+Power-law (passes GOF): N/A
+
+Log-normal (all): mc=0.098535 Msun, sigma=0.606509 dex
+Log-normal (passes GOF): N/A

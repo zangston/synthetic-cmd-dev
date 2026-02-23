@@ -33,6 +33,11 @@ Plotting change (requested):
 - For 2-observable runs (A1/B1), we DO NOT make an "acceptance-only" IMF curve, because
   passes_gof is undefined. Those runs show only the "all best-fits" IMF.
 
+Speed / caching change (important):
+- We generate isochrones ONLY for the 6-filter superset (JWST+HST) and reuse the interpolated
+  tables for all runs by slicing/filtering in the chi2 calculation.
+  This avoids recomputing SPISEA isochrones per run.
+
 Usage:
   python run_all_fits.py \
       --dat /scratch/wyz5rge/synthetic-hr/data/phot_joined_avmass.dat \
@@ -64,261 +69,9 @@ from spisea import synthetic, evolution, atmospheres, reddening
 @dataclass(frozen=True)
 class FitRunConfig:
     name: str
-    filt_list: List[str]          # SPISEA filter list
+    filt_list: List[str]          # SPISEA filter list (informational; we run superset internally)
     filters: List[str]            # Isochrone points column names (for mags-only)
     mode: str                     # "mags" or "cmd_a1"
-
-
-# -----------------------------
-# Fitter
-# -----------------------------
-class ChiSquaredFitterUnified:
-    def __init__(
-        self,
-        cfg: FitRunConfig,
-        base_iso_dir: str,
-        dist: float,
-        metallicity: float,
-        log_age: float,
-        output_dir: str,
-        interp_n: int = 10,
-        av_grid_halfwidth: float = 5.0,
-        av_grid_step: float = 0.1,
-        conf: float = 0.997,
-    ):
-        self.cfg = cfg
-        self.dist = dist
-        self.metallicity = metallicity
-        self.log_age = log_age
-        self.output_dir = output_dir
-        self.interp_n = interp_n
-        self.av_grid_halfwidth = av_grid_halfwidth
-        self.av_grid_step = av_grid_step
-        self.conf = conf
-
-        os.makedirs(self.output_dir, exist_ok=True)
-
-        # Per-run isochrone cache directory (prevents collisions)
-        self.iso_dir = os.path.join(base_iso_dir, cfg.name, "isochrones_cache")
-        os.makedirs(self.iso_dir, exist_ok=True)
-
-        # Models/laws (match your previous setup)
-        self.evo_model = evolution.Baraffe15()
-        self.atm_func = atmospheres.get_merged_atmosphere
-        self.red_law = reddening.RedLawCardelli(3.1)
-
-        # Wavelength map for de-reddening in minimize_AKs (microns)
-        self.filter_wavelengths = {
-            "m_jwst_F162M": 1.62,
-            "m_jwst_F182M": 1.82,
-            "m_jwst_F200W": 2.00,
-            "m_hst_f125w": 1.25,
-            "m_hst_f139m": 1.39,
-            "m_hst_f160w": 1.60,
-        }
-
-        # AV/AKs conversion used previously
-        self.AV_to_AKs = 1.0 / 0.1179   # ~8.479
-        self.AKs_per_AV = 0.118         # used previously in grid
-
-        # For A1 (CMD), use these two filters for CMD plane (F162M-F182M vs F182M)
-        self._a1_filters = ["m_jwst_F162M", "m_jwst_F182M"]
-
-    def interpolate_isochrone(self, isochrone, num_interp: int) -> np.ndarray:
-        masses = isochrone.points["mass"]
-        interp_data = []
-
-        if self.cfg.mode == "cmd_a1":
-            use_filters = self._a1_filters
-        else:
-            use_filters = self.cfg.filters
-
-        for i in range(len(masses) - 1):
-            m1, m2 = masses[i], masses[i + 1]
-            interp_masses = np.linspace(m1, m2, num=num_interp + 2)[1:-1]
-
-            interp_row = {
-                f: np.linspace(isochrone.points[f][i], isochrone.points[f][i + 1], num=num_interp + 2)[1:-1]
-                for f in use_filters
-            }
-
-            for j in range(len(interp_masses)):
-                entry = [interp_masses[j]] + [interp_row[f][j] for f in use_filters]
-                interp_data.append(tuple(entry))
-
-        # Add original grid points
-        for i in range(len(masses)):
-            entry = [masses[i]] + [isochrone.points[f][i] for f in use_filters]
-            interp_data.append(tuple(entry))
-
-        dtype = [("mass", float)] + [(f, float) for f in use_filters]
-        interp_arr = np.array(sorted(interp_data, key=lambda x: x[0]), dtype=dtype)
-        return interp_arr
-
-    def apply_dereddening(self, mags: List[float], AKs: float, filters: List[str]) -> List[float]:
-        out = []
-        for i, m in enumerate(mags):
-            f = filters[i]
-            wl = self.filter_wavelengths[f]
-            out.append(m - self.red_law.Cardelli89(wl, AKs))
-        return out
-
-    # --- A1 helpers ---
-    @staticmethod
-    def _cmd_obs(m162: float, m182: float) -> Tuple[float, float]:
-        return (m162 - m182, m182)
-
-    @staticmethod
-    def _cmd_sigma(e162: float, e182: float) -> Tuple[float, float]:
-        # sigma(color)^2 = e162^2 + e182^2 ; sigma(mag)=e182
-        return (math.sqrt(e162 * e162 + e182 * e182), e182)
-
-    def minimize_AKs(self, mags: List[float], errs: List[float]) -> float:
-        """
-        Initial guess for AV via minimizing CMD distance on unreddened isochrone.
-        Kept consistent with your prior workflow.
-        """
-        iso_unredd = synthetic.IsochronePhot(
-            self.log_age,
-            AKs=0.0,
-            distance=self.dist,
-            metallicity=self.metallicity,
-            evo_model=self.evo_model,
-            atm_func=self.atm_func,
-            red_law=self.red_law,
-            filters=self.cfg.filt_list,
-            iso_dir=self.iso_dir,
-        )
-        interp = self.interpolate_isochrone(iso_unredd, num_interp=self.interp_n)
-
-        def objective(aks_trial: float) -> float:
-            aks_trial = float(aks_trial)
-
-            # Always use F162M/F182M for the AV initial guess
-            m162, m182 = mags[0], mags[1]
-            filters = self._a1_filters
-            dered = self.apply_dereddening([m162, m182], aks_trial, filters)
-
-            c_obs, y_obs = self._cmd_obs(dered[0], dered[1])
-            c_iso = interp[filters[0]] - interp[filters[1]]
-            y_iso = interp[filters[1]]
-            d2 = (c_iso - c_obs) ** 2 + (y_iso - y_obs) ** 2
-            return float(np.min(d2))
-
-        res = minimize_scalar(objective, bounds=(0.0, 3.0), method="bounded")
-        return float(res.x)
-
-    def chi2_for_entry(self, entry: np.void, mags: List[float], errs: List[float]) -> float:
-        if self.cfg.mode == "cmd_a1":
-            # mags,errs are [F162M,F182M]
-            m162_obs, m182_obs = mags[0], mags[1]
-            e162, e182 = errs[0], errs[1]
-
-            c_obs, y_obs = self._cmd_obs(m162_obs, m182_obs)
-            sig_c, sig_y = self._cmd_sigma(e162, e182)
-
-            m162_mod = float(entry["m_jwst_F162M"])
-            m182_mod = float(entry["m_jwst_F182M"])
-            c_mod, y_mod = self._cmd_obs(m162_mod, m182_mod)
-
-            sig_c = max(sig_c, 1e-3)
-            sig_y = max(sig_y, 1e-3)
-
-            return float(((c_obs - c_mod) ** 2) / (sig_c * sig_c) + ((y_obs - y_mod) ** 2) / (sig_y * sig_y))
-
-        # mags-only
-        chi2_val = 0.0
-        for i, f in enumerate(self.cfg.filters):
-            sig = max(float(errs[i]), 1e-3)
-            diff = float(mags[i]) - float(entry[f])
-            chi2_val += (diff * diff) / (sig * sig)
-        return float(chi2_val)
-
-    def analyze_line(
-        self,
-        index_noncomment: int,
-        file_lineno: int,
-        mags: List[float],
-        errs: List[float],
-        true_av: float,
-        true_mass: float,
-    ) -> Dict[str, object]:
-        # Initial guess for AV
-        aks_guess = self.minimize_AKs(mags, errs)
-        av_guess = aks_guess * self.AV_to_AKs
-
-        av_lo = max(0.0, av_guess - self.av_grid_halfwidth)
-        av_hi = av_guess + self.av_grid_halfwidth
-        av_grid = np.arange(av_lo, av_hi + 1e-9, self.av_grid_step)
-
-        # Grid search
-        grid_rows = []
-        for av in av_grid:
-            aks = av * self.AKs_per_AV
-            iso = synthetic.IsochronePhot(
-                self.log_age,
-                AKs=aks,
-                distance=self.dist,
-                metallicity=self.metallicity,
-                evo_model=self.evo_model,
-                atm_func=self.atm_func,
-                red_law=self.red_law,
-                filters=self.cfg.filt_list,
-                iso_dir=self.iso_dir,
-            )
-            interp = self.interpolate_isochrone(iso, num_interp=self.interp_n)
-            for entry in interp:
-                chi2_val = self.chi2_for_entry(entry, mags, errs)
-                grid_rows.append((float(av), float(aks), float(entry["mass"]), float(chi2_val)))
-
-        grid_arr = np.array(grid_rows, dtype=[("AV", float), ("AKs", float), ("mass", float), ("chi2", float)])
-        if grid_arr.size == 0 or not np.any(np.isfinite(grid_arr["chi2"])):
-            raise RuntimeError("Grid produced no finite chi2 values (unexpected).")
-
-        best_idx = int(np.nanargmin(grid_arr["chi2"]))
-        best = grid_arr[best_idx]
-        min_chi2 = float(best["chi2"])
-
-        # Confidence region in (mass, AV) parameter space using Δχ², df=2 parameters
-        dof_gof = int(len(mags) - 2)  # GOF dof only
-        delta_chi2 = float(chi2.ppf(self.conf, df=2))
-        chi2_threshold = min_chi2 + delta_chi2
-        acceptable = grid_arr[np.isfinite(grid_arr["chi2"]) & (grid_arr["chi2"] <= chi2_threshold)]
-
-        # Optional GOF (only when dof_gof >= 1)
-        passes_gof = None
-        p_value = None
-        if dof_gof >= 1:
-            p_value = float(chi2.sf(min_chi2, df=dof_gof))  # 1-CDF
-            passes_gof = bool(p_value > (1.0 - self.conf))
-
-        # Bounds (Δχ² region)
-        if acceptable.size == 0:
-            mass_min = mass_max = av_min = av_max = None
-            intersects = None
-        else:
-            mass_min = float(np.min(acceptable["mass"]))
-            mass_max = float(np.max(acceptable["mass"]))
-            av_min = float(np.min(acceptable["AV"]))
-            av_max = float(np.max(acceptable["AV"]))
-            intersects = (av_min <= true_av <= av_max) and (mass_min <= true_mass <= mass_max)
-
-        return {
-            "index": index_noncomment,
-            "file_lineno": file_lineno,
-            "best_mass": float(best["mass"]),
-            "best_AV": float(best["AV"]),
-            "mass_min": mass_min,
-            "mass_max": mass_max,
-            "AV_min": av_min,
-            "AV_max": av_max,
-            "intersects": (bool(intersects) if intersects is not None else None),
-            "min_chi2": min_chi2,
-            "chi2_threshold": chi2_threshold,
-            "dof_gof": dof_gof,
-            "passes_gof": passes_gof,
-            "p_value": p_value,
-        }
 
 
 # -----------------------------
@@ -581,7 +334,6 @@ def plot_imf_and_fits(
     df_use["passes_gof_bool"] = df_use["passes_gof"] == True  # noqa: E712
     m_acc = df_use.loc[df_use["passes_gof_bool"], "best_mass"].to_numpy()
 
-    # If GOF is undefined for this run, m_acc will be empty; treat as "no accept curve"
     has_accept_curve = (m_acc.size > 0)
 
     imf_all = imf_hist_dndm(m_all, nbins=nbins_logM)
@@ -725,181 +477,392 @@ def plot_imf_and_fits(
 
 
 # -----------------------------
-# Run orchestration
+# Superset-grid fitter (reuse JWST+HST iso for all runs)
 # -----------------------------
-def run_one_fit(
-    cfg: FitRunConfig,
-    dat_path: str,
-    out_root: str,
-    base_iso_dir: str,
-    dist: float,
-    metallicity: float,
-    log_age: float,
-    nbins_logM: int,
-    bin_width_dex: float,
-) -> str:
-    run_dir = os.path.join(out_root, cfg.name)
-    ensure_dir(run_dir)
-    ensure_dir(os.path.join(run_dir, "plots"))
+class SupersetGridFitter:
+    """
+    Generates a single (AV, mass) grid using a 6-filter superset isochrone,
+    then evaluates chi2 for each run by slicing that same model grid.
 
-    # Logging per run
-    log_path = os.path.join(run_dir, f"{cfg.name}.log")
-    logger = logging.getLogger(cfg.name)
-    logger.setLevel(logging.INFO)
-    logger.handlers.clear()
-    fh = logging.FileHandler(log_path)
-    fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s: %(message)s"))
-    logger.addHandler(fh)
+    Observed mags/errs are provided per run.
+    """
 
-    logger.info("=== START RUN %s ===", cfg.name)
-    logger.info("dat_path=%s", dat_path)
-    logger.info("dist=%s metallicity=%s log_age=%s", dist, metallicity, log_age)
-    logger.info("mode=%s filters=%s", cfg.mode, cfg.filters)
+    # Superset filters and their isochrone column keys
+    SUPER_FILT_LIST = [
+        "jwst,F162M", "jwst,F182M", "jwst,F200W",
+        "wfc3,ir,f125w", "wfc3,ir,f139m", "wfc3,ir,f160w",
+    ]
+    SUPER_FILTERS = [
+        "m_jwst_F162M", "m_jwst_F182M", "m_jwst_F200W",
+        "m_hst_f125w", "m_hst_f139m", "m_hst_f160w",
+    ]
+    A1_FILTERS = ["m_jwst_F162M", "m_jwst_F182M"]
 
-    csv_path = os.path.join(run_dir, f"fit_results_{cfg.name}.csv")
+    def __init__(
+        self,
+        iso_dir: str,
+        dist: float,
+        metallicity: float,
+        log_age: float,
+        interp_n: int = 10,
+        av_grid_halfwidth: float = 5.0,
+        av_grid_step: float = 0.1,
+        conf: float = 0.997,
+    ):
+        self.iso_dir = iso_dir
+        self.dist = dist
+        self.metallicity = metallicity
+        self.log_age = log_age
+        self.interp_n = interp_n
+        self.av_grid_halfwidth = av_grid_halfwidth
+        self.av_grid_step = av_grid_step
+        self.conf = conf
 
-    fitter = ChiSquaredFitterUnified(
-        cfg=cfg,
-        base_iso_dir=base_iso_dir,
-        dist=dist,
-        metallicity=metallicity,
-        log_age=log_age,
-        output_dir=os.path.join(run_dir, "fit_plots"),
-    )
+        ensure_dir(self.iso_dir)
 
-    processed = set()
-    if os.path.exists(csv_path):
-        try:
-            with open(csv_path, "r") as f:
-                for r in csv.DictReader(f):
-                    processed.add(int(r["index"]))
-            logger.info("Loaded %d processed indices from existing CSV", len(processed))
-        except Exception as e:
-            logger.error("Could not read existing CSV for checkpointing: %s", e, exc_info=True)
+        self.evo_model = evolution.Baraffe15()
+        self.atm_func = atmospheres.get_merged_atmosphere
+        self.red_law = reddening.RedLawCardelli(3.1)
 
-    write_header = not os.path.exists(csv_path)
-    with open(csv_path, "a", newline="") as csvfile:
-        fieldnames = [
-            "index",
-            "file_lineno",
-            "best_mass",
-            "best_AV",
-            "mass_min",
-            "mass_max",
-            "AV_min",
-            "AV_max",
-            "intersects",
-            "min_chi2",
-            "chi2_threshold",
-            "dof_gof",
-            "passes_gof",
-            "p_value",
-        ]
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        if write_header:
-            writer.writeheader()
-
-        filt_to_dat = {
-            "m_jwst_F162M": ("F162M", "e162"),
-            "m_jwst_F182M": ("F182M", "e182"),
-            "m_jwst_F200W": ("F200W", "e200"),
-            "m_hst_f125w":  ("F125W", "e125"),
-            "m_hst_f139m":  ("F139M", "e139"),
-            "m_hst_f160w":  ("F160W", "e160"),
+        # microns
+        self.filter_wavelengths = {
+            "m_jwst_F162M": 1.62,
+            "m_jwst_F182M": 1.82,
+            "m_jwst_F200W": 2.00,
+            "m_hst_f125w": 1.25,
+            "m_hst_f139m": 1.39,
+            "m_hst_f160w": 1.60,
         }
 
-        idx_noncomment = -1
-        with open(dat_path, "r") as f:
-            for lineno_1based, line in enumerate(f, start=1):
-                if line.startswith("#") or (not line.strip()):
-                    continue
-                idx_noncomment += 1
+        self.AV_to_AKs = 1.0 / 0.1179
+        self.AKs_per_AV = 0.118
 
-                if idx_noncomment in processed:
-                    continue
+        # Δχ² for df=2 parameters (mass, AV)
+        self.delta_chi2 = float(chi2.ppf(self.conf, df=2))
 
-                try:
-                    parts = [float(x) for x in line.split()]
-                    if len(parts) < 16:
-                        logger.info("Skip idx=%d lineno=%d (too few columns: %d)",
-                                    idx_noncomment, lineno_1based, len(parts))
-                        continue
+    @staticmethod
+    def _cmd_obs(m162: float, m182: float) -> Tuple[float, float]:
+        return (m162 - m182, m182)
 
-                    row = parse_phot_line(parts)
+    @staticmethod
+    def _cmd_sigma(e162: float, e182: float) -> Tuple[float, float]:
+        return (math.sqrt(e162 * e162 + e182 * e182), e182)
 
-                    if cfg.mode == "cmd_a1":
-                        mags = [row["F162M"], row["F182M"]]
-                        errs = [row["e162"], row["e182"]]
-                    else:
-                        mags = []
-                        errs = []
-                        for f_iso in cfg.filters:
-                            m_key, e_key = filt_to_dat[f_iso]
-                            mags.append(row[m_key])
-                            errs.append(row[e_key])
+    def interpolate_isochrone_superset(self, isochrone, num_interp: int) -> np.ndarray:
+        masses = isochrone.points["mass"]
+        interp_data = []
 
-                    if should_skip_runner_style(mags, errs, row["true_AV"], row["true_mass"]):
-                        logger.info("Skip idx=%d lineno=%d (runner predicate)", idx_noncomment, lineno_1based)
-                        continue
+        use_filters = self.SUPER_FILTERS
 
-                    result = fitter.analyze_line(
-                        index_noncomment=idx_noncomment,
-                        file_lineno=lineno_1based,
-                        mags=mags,
-                        errs=errs,
-                        true_av=row["true_AV"],
-                        true_mass=row["true_mass"],
-                    )
+        for i in range(len(masses) - 1):
+            m1, m2 = masses[i], masses[i + 1]
+            interp_masses = np.linspace(m1, m2, num=num_interp + 2)[1:-1]
 
-                    writer.writerow(result)
-                    csvfile.flush()
+            interp_row = {
+                f: np.linspace(isochrone.points[f][i], isochrone.points[f][i + 1], num=num_interp + 2)[1:-1]
+                for f in use_filters
+            }
 
-                    if (idx_noncomment % 10) == 0:
-                        logger.info("Processed idx=%d lineno=%d best_mass=%.6f best_AV=%.6f min_chi2=%.4f dof_gof=%d",
-                                    idx_noncomment, lineno_1based,
-                                    result["best_mass"], result["best_AV"], result["min_chi2"], result["dof_gof"])
+            for j in range(len(interp_masses)):
+                entry = [interp_masses[j]] + [interp_row[f][j] for f in use_filters]
+                interp_data.append(tuple(entry))
 
-                except Exception as e:
-                    logger.error("Error processing idx=%d lineno=%d: %s", idx_noncomment, lineno_1based, e, exc_info=True)
+        for i in range(len(masses)):
+            entry = [masses[i]] + [isochrone.points[f][i] for f in use_filters]
+            interp_data.append(tuple(entry))
 
-    logger.info("=== FINISHED FITTING RUN %s ===", cfg.name)
+        dtype = [("mass", float)] + [(f, float) for f in use_filters]
+        return np.array(sorted(interp_data, key=lambda x: x[0]), dtype=dtype)
 
-    # Attach truth + quick IMF plots
-    try:
-        df = pd.read_csv(csv_path)
+    def apply_dereddening(self, mags: List[float], AKs: float, filters: List[str]) -> List[float]:
+        out = []
+        for i, m in enumerate(mags):
+            wl = self.filter_wavelengths[filters[i]]
+            out.append(m - self.red_law.Cardelli89(wl, AKs))
+        return out
 
-        truth_by_index = {}
-        idx_noncomment = -1
-        with open(dat_path, "r") as f:
-            for lineno_1based, line in enumerate(f, start=1):
-                if line.startswith("#") or (not line.strip()):
-                    continue
-                idx_noncomment += 1
-                parts = [float(x) for x in line.split()]
-                if len(parts) < 16:
-                    continue
-                row = parse_phot_line(parts)
-                truth_by_index[idx_noncomment] = (row["true_AV"], row["true_mass"])
-
-        df["true_AV"] = df["index"].map(lambda i: truth_by_index.get(int(i), (np.nan, np.nan))[0])
-        df["true_mass"] = df["index"].map(lambda i: truth_by_index.get(int(i), (np.nan, np.nan))[1])
-
-        out_truth_csv = os.path.join(run_dir, f"fit_results_{cfg.name}_with_truth.csv")
-        df.to_csv(out_truth_csv, index=False)
-        logger.info("Wrote with-truth CSV: %s", out_truth_csv)
-
-        plot_imf_and_fits(
-            df,
-            out_dir=os.path.join(run_dir, "imf"),
-            run_label=cfg.name,
-            nbins_logM=nbins_logM,
-            bin_width_dex=bin_width_dex,
+    def minimize_AKs_from_162_182(self, m162: float, e162: float, m182: float, e182: float) -> float:
+        """
+        Initial guess for AV via minimizing CMD distance on unreddened *superset* isochrone.
+        """
+        iso_unredd = synthetic.IsochronePhot(
+            self.log_age,
+            AKs=0.0,
+            distance=self.dist,
+            metallicity=self.metallicity,
+            evo_model=self.evo_model,
+            atm_func=self.atm_func,
+            red_law=self.red_law,
+            filters=self.SUPER_FILT_LIST,
+            iso_dir=self.iso_dir,
         )
+        interp = self.interpolate_isochrone_superset(iso_unredd, num_interp=self.interp_n)
 
-    except Exception as e:
-        logger.error("Post-run plotting failed: %s", e, exc_info=True)
+        def objective(aks_trial: float) -> float:
+            aks_trial = float(aks_trial)
+            dered = self.apply_dereddening([m162, m182], aks_trial, self.A1_FILTERS)
 
-    return csv_path
+            c_obs, y_obs = self._cmd_obs(dered[0], dered[1])
+            c_iso = interp[self.A1_FILTERS[0]] - interp[self.A1_FILTERS[1]]
+            y_iso = interp[self.A1_FILTERS[1]]
+            d2 = (c_iso - c_obs) ** 2 + (y_iso - y_obs) ** 2
+            return float(np.min(d2))
+
+        res = minimize_scalar(objective, bounds=(0.0, 3.0), method="bounded")
+        return float(res.x)
+
+    def chi2_for_run_on_entry(
+        self,
+        cfg: FitRunConfig,
+        entry: np.void,
+        obs_mags: List[float],
+        obs_errs: List[float],
+    ) -> float:
+        if cfg.mode == "cmd_a1":
+            m162_obs, m182_obs = obs_mags[0], obs_mags[1]
+            e162, e182 = obs_errs[0], obs_errs[1]
+
+            c_obs, y_obs = self._cmd_obs(m162_obs, m182_obs)
+            sig_c, sig_y = self._cmd_sigma(e162, e182)
+
+            m162_mod = float(entry["m_jwst_F162M"])
+            m182_mod = float(entry["m_jwst_F182M"])
+            c_mod, y_mod = self._cmd_obs(m162_mod, m182_mod)
+
+            sig_c = max(sig_c, 1e-3)
+            sig_y = max(sig_y, 1e-3)
+
+            return float(((c_obs - c_mod) ** 2) / (sig_c * sig_c) + ((y_obs - y_mod) ** 2) / (sig_y * sig_y))
+
+        # mags-only
+        chi2_val = 0.0
+        for i, f in enumerate(cfg.filters):
+            sig = max(float(obs_errs[i]), 1e-3)
+            diff = float(obs_mags[i]) - float(entry[f])
+            chi2_val += (diff * diff) / (sig * sig)
+        return float(chi2_val)
+
+    def analyze_star_for_runs(
+        self,
+        index_noncomment: int,
+        file_lineno: int,
+        row: Dict[str, float],
+        runs_needed: List[FitRunConfig],
+        filt_to_dat: Dict[str, Tuple[str, str]],
+    ) -> Dict[str, Dict[str, object]]:
+        """
+        Compute results for only the runs in runs_needed for this star.
+        Returns dict: run_name -> result row dict.
+        """
+
+        # Observations needed for AV guess (always from 162/182)
+        m162, e162 = row["F162M"], row["e162"]
+        m182, e182 = row["F182M"], row["e182"]
+
+        # If AV guess inputs fail runner predicate, we will likely skip everything anyway.
+        aks_guess = self.minimize_AKs_from_162_182(m162, e162, m182, e182)
+        av_guess = aks_guess * self.AV_to_AKs
+
+        av_lo = max(0.0, av_guess - self.av_grid_halfwidth)
+        av_hi = av_guess + self.av_grid_halfwidth
+        av_grid = np.arange(av_lo, av_hi + 1e-9, self.av_grid_step)
+
+        # Build obs vectors per run
+        obs_by_run: Dict[str, Tuple[List[float], List[float], int]] = {}
+        for cfg in runs_needed:
+            if cfg.mode == "cmd_a1":
+                obs_mags = [row["F162M"], row["F182M"]]
+                obs_errs = [row["e162"], row["e182"]]
+                nobs = 2
+            else:
+                obs_mags = []
+                obs_errs = []
+                for f_iso in cfg.filters:
+                    m_key, e_key = filt_to_dat[f_iso]
+                    obs_mags.append(row[m_key])
+                    obs_errs.append(row[e_key])
+                nobs = len(obs_mags)
+
+            obs_by_run[cfg.name] = (obs_mags, obs_errs, nobs)
+
+        # Grid search (single superset model grid reused for all runs)
+        # We'll store (AV, AKs, mass, model_mags...) implicitly via entry + av.
+        results_by_run: Dict[str, List[Tuple[float, float, float, float]]] = {cfg.name: [] for cfg in runs_needed}
+        # tuple: (AV, AKs, mass, chi2_run)
+
+        for av in av_grid:
+            aks = av * self.AKs_per_AV
+            iso = synthetic.IsochronePhot(
+                self.log_age,
+                AKs=aks,
+                distance=self.dist,
+                metallicity=self.metallicity,
+                evo_model=self.evo_model,
+                atm_func=self.atm_func,
+                red_law=self.red_law,
+                filters=self.SUPER_FILT_LIST,
+                iso_dir=self.iso_dir,
+            )
+            interp = self.interpolate_isochrone_superset(iso, num_interp=self.interp_n)
+
+            for entry in interp:
+                mass_val = float(entry["mass"])
+                for cfg in runs_needed:
+                    obs_mags, obs_errs, _ = obs_by_run[cfg.name]
+                    chi2_val = self.chi2_for_run_on_entry(cfg, entry, obs_mags, obs_errs)
+                    results_by_run[cfg.name].append((float(av), float(aks), mass_val, float(chi2_val)))
+
+        out: Dict[str, Dict[str, object]] = {}
+        for cfg in runs_needed:
+            arr = np.array(
+                results_by_run[cfg.name],
+                dtype=[("AV", float), ("AKs", float), ("mass", float), ("chi2", float)],
+            )
+            if arr.size == 0 or not np.any(np.isfinite(arr["chi2"])):
+                raise RuntimeError(f"Run {cfg.name}: grid produced no finite chi2 values.")
+
+            best_idx = int(np.nanargmin(arr["chi2"]))
+            best = arr[best_idx]
+            min_chi2 = float(best["chi2"])
+
+            chi2_threshold = min_chi2 + self.delta_chi2
+            acceptable = arr[np.isfinite(arr["chi2"]) & (arr["chi2"] <= chi2_threshold)]
+
+            # GOF (only when dof_gof>=1)
+            _, _, nobs = obs_by_run[cfg.name]
+            dof_gof = int(nobs - 2)
+            passes_gof = None
+            p_value = None
+            if dof_gof >= 1:
+                p_value = float(chi2.sf(min_chi2, df=dof_gof))
+                passes_gof = bool(p_value > (1.0 - self.conf))
+
+            # Bounds
+            if acceptable.size == 0:
+                mass_min = mass_max = av_min = av_max = None
+                intersects = None
+            else:
+                mass_min = float(np.min(acceptable["mass"]))
+                mass_max = float(np.max(acceptable["mass"]))
+                av_min = float(np.min(acceptable["AV"]))
+                av_max = float(np.max(acceptable["AV"]))
+                intersects = (av_min <= row["true_AV"] <= av_max) and (mass_min <= row["true_mass"] <= mass_max)
+
+            out[cfg.name] = {
+                "index": index_noncomment,
+                "file_lineno": file_lineno,
+                "best_mass": float(best["mass"]),
+                "best_AV": float(best["AV"]),
+                "mass_min": mass_min,
+                "mass_max": mass_max,
+                "AV_min": av_min,
+                "AV_max": av_max,
+                "intersects": (bool(intersects) if intersects is not None else None),
+                "min_chi2": min_chi2,
+                "chi2_threshold": chi2_threshold,
+                "dof_gof": dof_gof,
+                "passes_gof": passes_gof,
+                "p_value": p_value,
+            }
+
+        return out
+
+
+# -----------------------------
+# Orchestration
+# -----------------------------
+def setup_run_io(out_root: str, runs: List[FitRunConfig]) -> Tuple[
+    Dict[str, str],
+    Dict[str, logging.Logger],
+    Dict[str, set],
+]:
+    """
+    Returns:
+      csv_path_by_run, logger_by_run, processed_index_set_by_run
+    """
+    csv_paths: Dict[str, str] = {}
+    loggers: Dict[str, logging.Logger] = {}
+    processed: Dict[str, set] = {}
+
+    for cfg in runs:
+        run_dir = os.path.join(out_root, cfg.name)
+        ensure_dir(run_dir)
+        ensure_dir(os.path.join(run_dir, "plots"))
+
+        # Logger
+        log_path = os.path.join(run_dir, f"{cfg.name}.log")
+        logger = logging.getLogger(cfg.name)
+        logger.setLevel(logging.INFO)
+        logger.handlers.clear()
+        fh = logging.FileHandler(log_path)
+        fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s: %(message)s"))
+        logger.addHandler(fh)
+        loggers[cfg.name] = logger
+
+        logger.info("=== INIT RUN %s ===", cfg.name)
+
+        # CSV
+        csv_path = os.path.join(run_dir, f"fit_results_{cfg.name}.csv")
+        csv_paths[cfg.name] = csv_path
+
+        # Load processed indices
+        processed_set = set()
+        if os.path.exists(csv_path):
+            try:
+                with open(csv_path, "r") as f:
+                    for r in csv.DictReader(f):
+                        processed_set.add(int(r["index"]))
+                logger.info("Loaded %d processed indices from existing CSV", len(processed_set))
+            except Exception as e:
+                logger.error("Could not read existing CSV for checkpointing: %s", e, exc_info=True)
+        processed[cfg.name] = processed_set
+
+        # Ensure header exists
+        if not os.path.exists(csv_path):
+            with open(csv_path, "w", newline="") as csvfile:
+                fieldnames = [
+                    "index",
+                    "file_lineno",
+                    "best_mass",
+                    "best_AV",
+                    "mass_min",
+                    "mass_max",
+                    "AV_min",
+                    "AV_max",
+                    "intersects",
+                    "min_chi2",
+                    "chi2_threshold",
+                    "dof_gof",
+                    "passes_gof",
+                    "p_value",
+                ]
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+
+    return csv_paths, loggers, processed
+
+
+def append_row(csv_path: str, row: Dict[str, object]) -> None:
+    fieldnames = [
+        "index",
+        "file_lineno",
+        "best_mass",
+        "best_AV",
+        "mass_min",
+        "mass_max",
+        "AV_min",
+        "AV_max",
+        "intersects",
+        "min_chi2",
+        "chi2_threshold",
+        "dof_gof",
+        "passes_gof",
+        "p_value",
+    ]
+    with open(csv_path, "a", newline="") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writerow(row)
+        csvfile.flush()
 
 
 def main():
@@ -910,6 +873,10 @@ def main():
     parser.add_argument("--dist", type=float, default=4500.0)
     parser.add_argument("--metallicity", type=float, default=0.0)
     parser.add_argument("--log_age", type=float, default=6.0)
+    parser.add_argument("--interp_n", type=int, default=10)
+    parser.add_argument("--av_grid_halfwidth", type=float, default=5.0)
+    parser.add_argument("--av_grid_step", type=float, default=0.1)
+    parser.add_argument("--conf", type=float, default=0.997)
 
     parser.add_argument("--nbins_logM", type=int, default=25)
     parser.add_argument("--bin_width_dex", type=float, default=0.10)
@@ -958,54 +925,170 @@ def main():
         ),
     ]
 
-    # Run all fits
-    for cfg in runs:
-        run_one_fit(
-            cfg=cfg,
-            dat_path=args.dat,
-            out_root=args.out_root,
-            base_iso_dir=args.base_iso_dir,
-            dist=args.dist,
-            metallicity=args.metallicity,
-            log_age=args.log_age,
-            nbins_logM=args.nbins_logM,
-            bin_width_dex=args.bin_width_dex,
-        )
+    # Per-run logs/csvs/checkpoint sets
+    csv_paths, loggers, processed_by_run = setup_run_io(args.out_root, runs)
 
-    # Global axis limits from truth (for consistent comparisons across runs)
-    truth_mass = []
-    truth_av = []
+    # Isochrone cache directory (single superset cache shared by all runs)
+    superset_iso_dir = os.path.join(args.base_iso_dir, "superset_jwst_hst_all6_cache")
+    ensure_dir(superset_iso_dir)
+
+    fitter = SupersetGridFitter(
+        iso_dir=superset_iso_dir,
+        dist=args.dist,
+        metallicity=args.metallicity,
+        log_age=args.log_age,
+        interp_n=args.interp_n,
+        av_grid_halfwidth=args.av_grid_halfwidth,
+        av_grid_step=args.av_grid_step,
+        conf=args.conf,
+    )
+
+    # Mapping for mags-only runs
+    filt_to_dat = {
+        "m_jwst_F162M": ("F162M", "e162"),
+        "m_jwst_F182M": ("F182M", "e182"),
+        "m_jwst_F200W": ("F200W", "e200"),
+        "m_hst_f125w":  ("F125W", "e125"),
+        "m_hst_f139m":  ("F139M", "e139"),
+        "m_hst_f160w":  ("F160W", "e160"),
+    }
+
+    # Pre-scan truth for later plotting + also allow fast truth-by-index mapping
+    truth_by_index: Dict[int, Tuple[float, float]] = {}
+    truth_mass_all: List[float] = []
+    truth_av_all: List[float] = []
+
+    idx_noncomment = -1
     with open(args.dat, "r") as f:
-        for line in f:
+        for lineno_1based, line in enumerate(f, start=1):
             if line.startswith("#") or (not line.strip()):
                 continue
+            idx_noncomment += 1
             parts = [float(x) for x in line.split()]
             if len(parts) < 16:
                 continue
             row = parse_phot_line(parts)
+            truth_by_index[idx_noncomment] = (row["true_AV"], row["true_mass"])
             if row["true_mass"] > 0 and row["true_AV"] > 0:
-                truth_mass.append(row["true_mass"])
-                truth_av.append(row["true_AV"])
-    truth_mass = np.asarray(truth_mass, dtype=float)
-    truth_av = np.asarray(truth_av, dtype=float)
+                truth_mass_all.append(row["true_mass"])
+                truth_av_all.append(row["true_AV"])
 
+    # Main pass: iterate file again, compute only missing runs per index
+    idx_noncomment = -1
+    with open(args.dat, "r") as f:
+        for lineno_1based, line in enumerate(f, start=1):
+            if line.startswith("#") or (not line.strip()):
+                continue
+            idx_noncomment += 1
+
+            # Determine which runs still need this index
+            runs_needed = [cfg for cfg in runs if idx_noncomment not in processed_by_run[cfg.name]]
+            if not runs_needed:
+                continue
+
+            parts = [float(x) for x in line.split()]
+            if len(parts) < 16:
+                for cfg in runs_needed:
+                    loggers[cfg.name].info("Skip idx=%d lineno=%d (too few columns: %d)", idx_noncomment, lineno_1based, len(parts))
+                continue
+
+            row = parse_phot_line(parts)
+
+            # Apply runner predicate per run, and only keep runs that pass
+            runs_ready: List[FitRunConfig] = []
+            for cfg in runs_needed:
+                if cfg.mode == "cmd_a1":
+                    mags = [row["F162M"], row["F182M"]]
+                    errs = [row["e162"], row["e182"]]
+                else:
+                    mags = []
+                    errs = []
+                    for f_iso in cfg.filters:
+                        m_key, e_key = filt_to_dat[f_iso]
+                        mags.append(row[m_key])
+                        errs.append(row[e_key])
+
+                if should_skip_runner_style(mags, errs, row["true_AV"], row["true_mass"]):
+                    loggers[cfg.name].info("Skip idx=%d lineno=%d (runner predicate)", idx_noncomment, lineno_1based)
+                    processed_by_run[cfg.name].add(idx_noncomment)  # treat as done (won't ever be fit)
+                    continue
+
+                runs_ready.append(cfg)
+
+            if not runs_ready:
+                continue
+
+            # Compute fits (shared isochrone work)
+            try:
+                results = fitter.analyze_star_for_runs(
+                    index_noncomment=idx_noncomment,
+                    file_lineno=lineno_1based,
+                    row=row,
+                    runs_needed=runs_ready,
+                    filt_to_dat=filt_to_dat,
+                )
+
+                for cfg in runs_ready:
+                    res = results[cfg.name]
+                    append_row(csv_paths[cfg.name], res)
+                    processed_by_run[cfg.name].add(idx_noncomment)
+
+                    if (idx_noncomment % 10) == 0:
+                        loggers[cfg.name].info(
+                            "Processed idx=%d lineno=%d best_mass=%.6f best_AV=%.6f min_chi2=%.4f dof_gof=%d",
+                            idx_noncomment, lineno_1based,
+                            res["best_mass"], res["best_AV"], res["min_chi2"], res["dof_gof"],
+                        )
+
+            except Exception as e:
+                for cfg in runs_ready:
+                    loggers[cfg.name].error("Error processing idx=%d lineno=%d: %s", idx_noncomment, lineno_1based, e, exc_info=True)
+
+    # Global axis limits from truth
+    truth_mass = np.asarray(truth_mass_all, dtype=float)
+    truth_av = np.asarray(truth_av_all, dtype=float)
     mass_xlim, av_xlim = fixed_axis_limits_from_truth(truth_mass, truth_av)
 
-    # Re-render identity/error plots for each run using fixed limits
+    # Post: attach truth + plots for each run
     for cfg in runs:
         run_dir = os.path.join(args.out_root, cfg.name)
-        with_truth_csv = os.path.join(run_dir, f"fit_results_{cfg.name}_with_truth.csv")
-        if not os.path.exists(with_truth_csv):
+        csv_path = csv_paths[cfg.name]
+        logger = loggers[cfg.name]
+        logger.info("=== POSTPROCESS RUN %s ===", cfg.name)
+
+        if not os.path.exists(csv_path):
+            logger.error("Missing CSV: %s", csv_path)
             continue
 
-        df = pd.read_csv(with_truth_csv)
-        plot_identity_and_error_hist(
-            df=df,
-            out_dir=os.path.join(run_dir, "compare_identity"),
-            run_label=cfg.name,
-            mass_xlim=mass_xlim,
-            av_xlim=av_xlim,
-        )
+        try:
+            df = pd.read_csv(csv_path)
+            df["true_AV"] = df["index"].map(lambda i: truth_by_index.get(int(i), (np.nan, np.nan))[0])
+            df["true_mass"] = df["index"].map(lambda i: truth_by_index.get(int(i), (np.nan, np.nan))[1])
+
+            out_truth_csv = os.path.join(run_dir, f"fit_results_{cfg.name}_with_truth.csv")
+            df.to_csv(out_truth_csv, index=False)
+            logger.info("Wrote with-truth CSV: %s", out_truth_csv)
+
+            # Identity/error plots with fixed limits
+            plot_identity_and_error_hist(
+                df=df,
+                out_dir=os.path.join(run_dir, "compare_identity"),
+                run_label=cfg.name,
+                mass_xlim=mass_xlim,
+                av_xlim=av_xlim,
+            )
+
+            # IMF plots (with GOF behavior described in docstring)
+            plot_imf_and_fits(
+                df,
+                out_dir=os.path.join(run_dir, "imf"),
+                run_label=cfg.name,
+                nbins_logM=args.nbins_logM,
+                bin_width_dex=args.bin_width_dex,
+            )
+
+        except Exception as e:
+            logger.error("Post-run plotting failed: %s", e, exc_info=True)
 
     # Top-level summary
     summary_path = os.path.join(args.out_root, "RUN_SUMMARY.txt")
@@ -1014,7 +1097,8 @@ def main():
         f.write(f"Input dat: {args.dat}\n")
         f.write(f"dist={args.dist} metallicity={args.metallicity} log_age={args.log_age}\n")
         f.write(f"Global mass xlim: {mass_xlim}\n")
-        f.write(f"Global AV xlim: {av_xlim}\n\n")
+        f.write(f"Global AV xlim: {av_xlim}\n")
+        f.write(f"Superset iso cache: {superset_iso_dir}\n\n")
         for cfg in runs:
             f.write(f"{cfg.name}:\n")
             f.write(f"  CSV:   {os.path.join(args.out_root, cfg.name, f'fit_results_{cfg.name}.csv')}\n")
