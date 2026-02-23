@@ -2,41 +2,28 @@
 """
 run_all_fits.py
 
-Runs a sequence of chi-squared fitting experiments on a single input .dat file,
-with per-run:
+Runs a sequence of chi-squared fitting experiments on a single input .dat file.
+
+Per-run outputs:
   - checkpointed CSV output (append-only)
   - per-run log file
-  - summary plots:
-      1) Mass: identity plot vs Andersen(2024) mass (= true_mass in .dat) + error histogram
-      2) AV:   identity plot vs Andersen(2024) AV   (= true_AV   in .dat) + error histogram
-      3) IMF: counts + dN/dM (+ power-law slope) + dN/dlogM (+ log-normal fits)
+  - plots:
+      * compare_identity/: identity + error hist for Mass and AV
+      * imf/: matched-sample IMFs (Andersen vs Fit; all vs accept-only)
+      * plots/: per-star (AV, mass) chi2/acceptance diagnostic
 
-Planned runs:
-  - jwst_cmd_F162MminusF182M_vs_F182M  (A1): CMD fit using (F162M-F182M) vs F182M
-  - jwst_mags_F162M_F182M              (B1): Two magnitudes-only using F162M & F182M
-  - jwst_mags_F162M_F182M_F200W        (C1): Three magnitudes-only using F162M, F182M, F200W
-  - jwst_mags_all                      (bucket): same as C1 but separate output folder
-  - jwst_hst_mags_all                  (JWST+HST): six magnitudes-only JWST+HST
-
-Key statistical change (important):
-- For ALL runs, parameter "acceptance region" (mass_min/mass_max/AV_min/AV_max) is defined via
+Key statistical definitions:
+- "Acceptance region" is ALWAYS defined in parameter space (mass, AV) via:
       chi2 <= chi2_min + Δchi2
-  where Δchi2 comes from chi-square CDF with df=2 parameters (mass, AV) at conf (default 0.997).
-  This is valid even for 2-observable fits (A1/B1).
+  where Δchi2 uses df=2 parameters at conf (default 0.95).
+  This is valid even when Nobs=2.
 
-- Goodness-of-fit (GOF) hypothesis test is ONLY defined when dof_gof = Nobs - Nparams >= 1.
-  We store:
-      dof_gof, p_value, passes_gof
-  For A1 and B1, dof_gof=0 -> p_value and passes_gof are None.
+- GOF hypothesis test is ONLY defined when dof_gof = Nobs - Nparams >= 1.
+  We store dof_gof, p_value, passes_gof but DO NOT use GOF to define acceptance-region IMFs.
 
-Plotting change (requested):
-- For 2-observable runs (A1/B1), we DO NOT make an "acceptance-only" IMF curve, because
-  passes_gof is undefined. Those runs show only the "all best-fits" IMF.
-
-Speed / caching change (important):
-- We generate isochrones ONLY for the 6-filter superset (JWST+HST) and reuse the interpolated
-  tables for all runs by slicing/filtering in the chi2 calculation.
-  This avoids recomputing SPISEA isochrones per run.
+Speed / caching:
+- We generate isochrones ONLY for a 6-filter superset (JWST+HST) and reuse those
+  interpolated tables for all runs by slicing/filtering in the chi2 calculation.
 
 Usage:
   python run_all_fits.py \
@@ -48,6 +35,7 @@ Usage:
 import os
 import csv
 import math
+import time
 import logging
 import argparse
 from dataclasses import dataclass
@@ -69,8 +57,8 @@ from spisea import synthetic, evolution, atmospheres, reddening
 @dataclass(frozen=True)
 class FitRunConfig:
     name: str
-    filt_list: List[str]          # SPISEA filter list (informational; we run superset internally)
-    filters: List[str]            # Isochrone points column names (for mags-only)
+    filt_list: List[str]          # informational; superset is used internally
+    filters: List[str]            # isochrone column names used for mags-only
     mode: str                     # "mags" or "cmd_a1"
 
 
@@ -121,12 +109,15 @@ def should_skip_runner_style(mags: List[float], errs: List[float], true_av: floa
 
 
 # -----------------------------
-# Plotting + IMF helpers
+# Utility
 # -----------------------------
 def ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
+# -----------------------------
+# Plotting: identity/error
+# -----------------------------
 def fixed_axis_limits_from_truth(
     truth_mass: np.ndarray,
     truth_av: np.ndarray,
@@ -162,39 +153,36 @@ def plot_identity_and_error_hist(
     df_use["mass_pct_error"] = 100.0 * (df_use["best_mass"] - df_use["true_mass"]) / df_use["true_mass"]
     df_use["av_pct_error"] = 100.0 * (df_use["best_AV"] - df_use["true_AV"]) / df_use["true_AV"]
 
-    # GOF acceptance mask (only meaningful when dof_gof>=1; otherwise passes_gof is None/NaN)
-    df_use["has_accept_region"] = df_use["passes_gof"] == True  # noqa: E712
+    # GOF visualization only; acceptance region is NOT based on GOF
+    df_use["passes_gof_bool"] = df_use["passes_gof"] == True  # noqa: E712
 
     s = 6
     alpha = 0.35
+    acc = df_use[df_use["passes_gof_bool"]]
+    noacc = df_use[~df_use["passes_gof_bool"]]
 
-    acc = df_use[df_use["has_accept_region"]]
-    noacc = df_use[~df_use["has_accept_region"]]
-
-    # --- Mass identity ---
+    # Mass identity
     plt.figure(figsize=(7, 7))
     plt.scatter(noacc["true_mass"], noacc["best_mass"], s=s, alpha=alpha, label="fails GOF / undefined", marker="o")
     plt.scatter(acc["true_mass"], acc["best_mass"], s=s, alpha=alpha, label="passes GOF", marker="o")
     plt.plot([mass_xlim[0], mass_xlim[1]], [mass_xlim[0], mass_xlim[1]], "k--", lw=1)
-    plt.xscale("log")
-    plt.yscale("log")
-    plt.xlim(mass_xlim)
-    plt.ylim(mass_xlim)
-    plt.xlabel("Andersen (2024) Mass (M$_\\odot$)")
+    plt.xscale("log"); plt.yscale("log")
+    plt.xlim(mass_xlim); plt.ylim(mass_xlim)
+    plt.xlabel("Andersen (truth) Mass (M$_\\odot$)")
     plt.ylabel(f"{run_label} Mass (M$_\\odot$)")
-    plt.title(f"Mass identity: {run_label} vs Andersen (2024)")
+    plt.title(f"Mass identity: {run_label} vs Andersen truth")
     plt.grid(True, which="both", alpha=0.3)
     plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, "mass_identity.png"), dpi=200)
     plt.close()
 
-    # --- Mass error histogram ---
+    # Mass error hist
     plt.figure(figsize=(8, 4.5))
     bins = np.arange(-200, 201, 10)
     plt.hist(df_use["mass_pct_error"].dropna(), bins=bins, alpha=0.8)
     plt.xlim(-200, 200)
-    plt.xlabel("Mass % Error = 100*(fit - Andersen)/Andersen")
+    plt.xlabel("Mass % Error = 100*(fit - truth)/truth")
     plt.ylabel("Count")
     plt.title(f"Mass % Error histogram: {run_label}")
     plt.grid(True, alpha=0.3)
@@ -202,28 +190,27 @@ def plot_identity_and_error_hist(
     plt.savefig(os.path.join(out_dir, "mass_error_hist.png"), dpi=200)
     plt.close()
 
-    # --- AV identity ---
+    # AV identity
     plt.figure(figsize=(7, 7))
     plt.scatter(noacc["true_AV"], noacc["best_AV"], s=s, alpha=alpha, label="fails GOF / undefined", marker="o")
     plt.scatter(acc["true_AV"], acc["best_AV"], s=s, alpha=alpha, label="passes GOF", marker="o")
     plt.plot([av_xlim[0], av_xlim[1]], [av_xlim[0], av_xlim[1]], "k--", lw=1)
-    plt.xlim(av_xlim)
-    plt.ylim(av_xlim)
-    plt.xlabel("Andersen (2024) AV")
+    plt.xlim(av_xlim); plt.ylim(av_xlim)
+    plt.xlabel("Andersen (truth) AV")
     plt.ylabel(f"{run_label} AV")
-    plt.title(f"AV identity: {run_label} vs Andersen (2024)")
+    plt.title(f"AV identity: {run_label} vs Andersen truth")
     plt.grid(True, alpha=0.3)
     plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, "av_identity.png"), dpi=200)
     plt.close()
 
-    # --- AV error histogram ---
+    # AV error hist
     plt.figure(figsize=(8, 4.5))
     bins = np.arange(-200, 201, 10)
     plt.hist(df_use["av_pct_error"].dropna(), bins=bins, alpha=0.8)
     plt.xlim(-200, 200)
-    plt.xlabel("AV % Error = 100*(fit - Andersen)/Andersen")
+    plt.xlabel("AV % Error = 100*(fit - truth)/truth")
     plt.ylabel("Count")
     plt.title(f"AV % Error histogram: {run_label}")
     plt.grid(True, alpha=0.3)
@@ -232,26 +219,53 @@ def plot_identity_and_error_hist(
     plt.close()
 
 
-def imf_hist_dndm(masses: np.ndarray, nbins: int = 25):
-    masses = np.asarray(masses, dtype=float)
-    masses = masses[np.isfinite(masses) & (masses > 0)]
-    if masses.size == 0:
+# -----------------------------
+# IMF helpers (matched-sample, 4 IMFs)
+# -----------------------------
+def _sanitize_masses(m: np.ndarray) -> np.ndarray:
+    m = np.asarray(m, dtype=float)
+    return m[np.isfinite(m) & (m > 0)]
+
+
+def make_log_bins_from_samples(samples: List[np.ndarray], nbins: int) -> np.ndarray:
+    allm = np.concatenate([_sanitize_masses(s) for s in samples if s is not None and len(s) > 0], axis=0)
+    allm = _sanitize_masses(allm)
+    if allm.size == 0:
+        return np.array([])
+    m_min = max(0.01, float(np.min(allm)))
+    m_max = float(np.max(allm))
+    if not (np.isfinite(m_min) and np.isfinite(m_max)) or m_max <= m_min:
+        return np.array([])
+    return np.logspace(np.log10(m_min), np.log10(m_max), nbins + 1)
+
+
+def imf_hist_on_edges(masses: np.ndarray, edges: np.ndarray):
+    masses = _sanitize_masses(masses)
+    if masses.size == 0 or edges.size < 2:
         return None
-
-    m_min = max(0.01, float(np.min(masses)))
-    m_max = float(np.max(masses))
-
-    edges = np.logspace(np.log10(m_min), np.log10(m_max), nbins + 1)
     N, _ = np.histogram(masses, bins=edges)
-
     centers = np.sqrt(edges[:-1] * edges[1:])
     widths = edges[1:] - edges[:-1]
     dndm = N / widths
-    return centers, edges, N, dndm
+    return centers, N, dndm
 
 
-def fit_powerlaw_slope(centers: np.ndarray, dndm: np.ndarray):
-    mask = (dndm > 0) & np.isfinite(dndm) & np.isfinite(centers) & (centers > 0)
+def make_dndlogM_fixed_edges(masses: np.ndarray, edges_log: np.ndarray):
+    masses = _sanitize_masses(masses)
+    if masses.size == 0 or edges_log.size < 2:
+        return None
+    logM = np.log10(masses)
+    N, _ = np.histogram(logM, bins=edges_log)
+    centers_log = 0.5 * (edges_log[:-1] + edges_log[1:])
+    centers_M = 10 ** centers_log
+    binw = float(edges_log[1] - edges_log[0])
+    dndlog = N / binw
+    return centers_M, N, dndlog
+
+
+def fit_powerlaw_slope_highmass(centers: np.ndarray, dndm: np.ndarray, m_break: float = 0.5):
+    # Fit only above break mass
+    mask = (centers >= m_break) & (dndm > 0) & np.isfinite(dndm) & np.isfinite(centers)
     if np.sum(mask) < 3:
         return None
     logM = np.log10(centers[mask])
@@ -266,28 +280,9 @@ def lognormal_dndlogM(M, A, log10_mc, sigma_dex):
     return A * np.exp(-0.5 * ((logM - log10_mc) / sigma_dex) ** 2)
 
 
-def make_dndlogM(masses: np.ndarray, bin_width_dex: float = 0.1):
-    masses = np.asarray(masses, dtype=float)
-    masses = masses[np.isfinite(masses) & (masses > 0)]
-    if masses.size == 0:
-        return None
-
-    logM = np.log10(masses)
-    lo = np.floor(logM.min() / bin_width_dex) * bin_width_dex
-    hi = np.ceil(logM.max() / bin_width_dex) * bin_width_dex
-    edges_log = np.arange(lo, hi + bin_width_dex, bin_width_dex)
-
-    N, _ = np.histogram(logM, bins=edges_log)
-    centers_log = 0.5 * (edges_log[:-1] + edges_log[1:])
-    centers_M = 10 ** centers_log
-    dndlog = N / bin_width_dex
-    return centers_M, dndlog, N, edges_log
-
-
-def fit_lognormal(centers_M: np.ndarray, dndlog: np.ndarray):
+def fit_lognormal_lowmass(centers_M: np.ndarray, dndlog: np.ndarray, m_break: float = 0.5):
     from scipy.optimize import curve_fit
-
-    mask = (dndlog > 0) & np.isfinite(dndlog) & np.isfinite(centers_M) & (centers_M > 0)
+    mask = (centers_M <= m_break) & (dndlog > 0) & np.isfinite(dndlog) & np.isfinite(centers_M) & (centers_M > 0)
     x = centers_M[mask]
     y = dndlog[mask]
     if x.size < 3:
@@ -304,176 +299,289 @@ def fit_lognormal(centers_M: np.ndarray, dndlog: np.ndarray):
     return popt, perr
 
 
-def plot_imf_and_fits(
+def plot_imfs_matched(
     df: pd.DataFrame,
     out_dir: str,
     run_label: str,
-    nbins_logM: int = 25,
+    nbins: int = 25,
     bin_width_dex: float = 0.10,
+    m_break: float = 0.5,
 ) -> None:
     """
-    Produces:
-      - imf_counts.png
-      - imf_dndm.png
-      - imf_dndlogM_lognormal.png
+    Produces matched-sample IMF plots.
 
-    Samples:
-      * all best fits (always)
-      * passes_gof only (only when dof_gof>=1 produces True/False; for dof_gof==0 we skip)
+    Type 1 (ALL): stars present in df (i.e., fit produced output)
+      - Andersen_all: true_mass on those same indices
+      - Fit_all:      best_mass on those same indices
+
+    Type 2 (PASS χ² GOF): subset where χ² GOF passes (passes_gof == True)
+      - defined only when dof_gof >= 1 (i.e., Nobs - Nparams >= 1)
+      - Andersen_pass: true_mass on those same indices
+      - Fit_pass:      best_mass on those same indices
     """
     ensure_dir(out_dir)
 
-    df_use = df.copy()
-    df_use = df_use.dropna(subset=["best_mass"])
-    df_use = df_use[np.isfinite(df_use["best_mass"])]
-    df_use = df_use[df_use["best_mass"] > 0].copy()
+    d = df.copy()
 
-    m_all = df_use["best_mass"].to_numpy()
+    # Base filter: must have fit outputs and truth
+    d = d[np.isfinite(d["best_mass"]) & (d["best_mass"] > 0)]
+    d = d[np.isfinite(d["true_mass"]) & (d["true_mass"] > 0)]
 
-    # GOF-based mask (may be all False/NaN for A1/B1)
-    df_use["passes_gof_bool"] = df_use["passes_gof"] == True  # noqa: E712
-    m_acc = df_use.loc[df_use["passes_gof_bool"], "best_mass"].to_numpy()
-
-    has_accept_curve = (m_acc.size > 0)
-
-    imf_all = imf_hist_dndm(m_all, nbins=nbins_logM)
-    imf_acc = imf_hist_dndm(m_acc, nbins=nbins_logM) if has_accept_curve else None
-    if imf_all is None:
+    if len(d) == 0:
         return
 
-    c_all, edges_all, N_all, dndm_all = imf_all
-    if imf_acc:
-        c_acc, edges_acc, N_acc, dndm_acc = imf_acc
-    else:
-        c_acc, N_acc, dndm_acc = None, None, None
+    # Type 2 mask: robust to CSV round-tripping (bool/str/NaN)
+    pass_mask = d["passes_gof"].astype(str).str.lower().isin(["true", "1"])
+    d_all = d
+    d_pass = d[pass_mask].copy()
 
-    fit_all = fit_powerlaw_slope(c_all, dndm_all)
-    fit_acc = fit_powerlaw_slope(c_acc, dndm_acc) if imf_acc else None
+    andersen_all = d_all["true_mass"].to_numpy()
+    fit_all = d_all["best_mass"].to_numpy()
+    andersen_pass = d_pass["true_mass"].to_numpy()
+    fit_pass = d_pass["best_mass"].to_numpy()
 
-    # --- Plot counts ---
+    # Shared linear-mass bin edges for counts/dN/dM (use both ALL + PASS samples)
+    edges = make_log_bins_from_samples([andersen_all, fit_all, andersen_pass, fit_pass], nbins=nbins)
+    if edges.size < 2:
+        return
+
+    # Shared logM edges for dN/dlogM (use ALL only for axis range consistency)
+    all_for_log = np.concatenate([_sanitize_masses(andersen_all), _sanitize_masses(fit_all)], axis=0)
+    if all_for_log.size == 0:
+        return
+    log_lo = np.floor(np.log10(all_for_log.min()) / bin_width_dex) * bin_width_dex
+    log_hi = np.ceil(np.log10(all_for_log.max()) / bin_width_dex) * bin_width_dex
+    edges_log = np.arange(log_lo, log_hi + bin_width_dex, bin_width_dex)
+
+    # Histograms on shared edges
+    h_A_all = imf_hist_on_edges(andersen_all, edges)
+    h_F_all = imf_hist_on_edges(fit_all, edges)
+    h_A_pass = imf_hist_on_edges(andersen_pass, edges) if andersen_pass.size else None
+    h_F_pass = imf_hist_on_edges(fit_pass, edges) if fit_pass.size else None
+
+    if not h_A_all or not h_F_all:
+        return
+
+    # --- Counts plot ---
     plt.figure(figsize=(10, 5))
-    plt.step(c_all, N_all, where="mid", color="black", linewidth=2, label=f"{run_label} (all best-fits)")
-    if has_accept_curve:
-        plt.step(c_acc, N_acc, where="mid", color="crimson", linewidth=2, linestyle="--",
-                 label=f"{run_label} (passes GOF only)")
-    plt.xscale("log")
-    plt.yscale("log")
+    cA, NA, _ = h_A_all
+    cF, NF, _ = h_F_all
+    plt.step(cA, NA, where="mid", linewidth=2, label="Andersen (truth) — ALL (matched)")
+    plt.step(cF, NF, where="mid", linewidth=2, linestyle="--", label=f"{run_label} — ALL")
+
+    if h_A_pass and h_F_pass:
+        cAp, NAp, _ = h_A_pass
+        cFp, NFp, _ = h_F_pass
+        plt.step(cAp, NAp, where="mid", linewidth=2, alpha=0.85, label="Andersen (truth) — PASS χ² GOF (matched)")
+        plt.step(cFp, NFp, where="mid", linewidth=2, linestyle="--", alpha=0.85, label=f"{run_label} — PASS χ² GOF")
+    else:
+        # Distinguish "GOF undefined" vs "none passed"
+        has_any_gof = np.any(d["dof_gof"].fillna(0).astype(int) >= 1)
+        msg = "PASS sample empty (none passed χ² GOF)" if has_any_gof else "PASS sample undefined (dof_gof<1 for all)"
+        plt.text(0.02, 0.95, msg, transform=plt.gca().transAxes, va="top")
+
+    plt.axvline(m_break, linestyle=":", linewidth=1)
+    plt.xscale("log"); plt.yscale("log")
     plt.xlabel("Mass (M$_\\odot$)")
     plt.ylabel("Counts per bin")
-    plt.title(f"IMF Histogram (Counts): {run_label}")
+    plt.title(f"IMF Counts (matched samples): {run_label}")
     plt.grid(True, which="both", alpha=0.3)
     plt.legend()
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, "imf_counts.png"), dpi=200)
+    plt.savefig(os.path.join(out_dir, "imf_counts_matched.png"), dpi=200)
     plt.close()
 
-    # --- Plot dN/dM + power-law overlay ---
+    # --- dN/dM plot + powerlaw fits above break ---
     plt.figure(figsize=(10, 6))
-    plt.step(c_all, dndm_all, where="mid", color="black", linewidth=2, label=f"{run_label} dN/dM (all)")
-    if has_accept_curve:
-        plt.step(c_acc, dndm_acc, where="mid", color="crimson", linewidth=2, linestyle="--",
-                 label=f"{run_label} dN/dM (passes GOF)")
+    cA, _, dA = h_A_all
+    cF, _, dF = h_F_all
+    plt.step(cA, dA, where="mid", linewidth=2, label="Andersen — ALL")
+    plt.step(cF, dF, where="mid", linewidth=2, linestyle="--", label=f"{run_label} — ALL")
 
-    def overlay_powerlaw(fit, mmin, mmax, color, linestyle, label):
+    fitA = fit_powerlaw_slope_highmass(cA, dA, m_break=m_break)
+    fitF = fit_powerlaw_slope_highmass(cF, dF, m_break=m_break)
+
+    def overlay_pl(fit, centers, label):
         if not fit:
             return
         alpha, slope, intercept = fit
+        mmin = max(m_break, float(np.nanmin(centers)))
+        mmax = float(np.nanmax(centers))
+        if not (np.isfinite(mmin) and np.isfinite(mmax)) or mmax <= mmin:
+            return
         M = np.logspace(np.log10(mmin), np.log10(mmax), 300)
         y = 10 ** (intercept + slope * np.log10(M))
-        plt.plot(M, y, color=color, linestyle=linestyle, linewidth=2, alpha=0.85, label=label)
+        plt.plot(M, y, linewidth=2, alpha=0.8, label=label)
 
-    mmin = float(np.min(c_all))
-    mmax = float(np.max(c_all))
-    if fit_all:
-        overlay_powerlaw(fit_all, mmin, mmax, "black", "-", f"Power-law fit (all): α={fit_all[0]:.2f}")
-    if fit_acc:
-        overlay_powerlaw(fit_acc, mmin, mmax, "crimson", "--", f"Power-law fit (passes GOF): α={fit_acc[0]:.2f}")
+    if fitA:
+        overlay_pl(fitA, cA, f"Andersen PL (M≥{m_break:.2f}): α={fitA[0]:.2f}")
+    if fitF:
+        overlay_pl(fitF, cF, f"Fit PL (M≥{m_break:.2f}): α={fitF[0]:.2f}")
 
-    plt.xscale("log")
-    plt.yscale("log")
+    if h_A_pass and h_F_pass:
+        cAp, _, dAp = h_A_pass
+        cFp, _, dFp = h_F_pass
+        plt.step(cAp, dAp, where="mid", linewidth=2, alpha=0.85, label="Andersen — PASS χ² GOF")
+        plt.step(cFp, dFp, where="mid", linewidth=2, linestyle="--", alpha=0.85, label=f"{run_label} — PASS χ² GOF")
+
+    plt.axvline(m_break, linestyle=":", linewidth=1)
+    plt.xscale("log"); plt.yscale("log")
     plt.xlabel("Mass (M$_\\odot$)")
     plt.ylabel("dN/dM")
-    plt.title(f"IMF (dN/dM): {run_label}")
+    plt.title(f"IMF dN/dM (matched samples): {run_label}")
     plt.grid(True, which="both", alpha=0.3)
     plt.legend()
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, "imf_dndm.png"), dpi=200)
+    plt.savefig(os.path.join(out_dir, "imf_dndm_matched.png"), dpi=200)
     plt.close()
 
-    # --- Log-normal in dN/dlog10M ---
-    b_all = make_dndlogM(m_all, bin_width_dex=bin_width_dex)
-    b_acc = make_dndlogM(m_acc, bin_width_dex=bin_width_dex) if has_accept_curve else None
+    # --- dN/dlogM plot + lognormal fits below break ---
+    bA_all = make_dndlogM_fixed_edges(andersen_all, edges_log)
+    bF_all = make_dndlogM_fixed_edges(fit_all, edges_log)
+    if not bA_all or not bF_all:
+        return
 
-    fit_ln_all = fit_lognormal(b_all[0], b_all[1]) if b_all else None
-    fit_ln_acc = fit_lognormal(b_acc[0], b_acc[1]) if b_acc else None
+    cMA, _, dAlog = bA_all
+    cMF, _, dFlog = bF_all
+
+    lnA = fit_lognormal_lowmass(cMA, dAlog, m_break=m_break)
+    lnF = fit_lognormal_lowmass(cMF, dFlog, m_break=m_break)
 
     plt.figure(figsize=(10, 7))
-    plt.scatter(b_all[0], b_all[1], s=25, color="black", alpha=0.7, label=f"{run_label} dN/dlogM (all)")
-    if has_accept_curve and b_acc:
-        plt.scatter(b_acc[0], b_acc[1], s=25, color="crimson", alpha=0.7, label=f"{run_label} dN/dlogM (passes GOF)")
+    plt.scatter(cMA, dAlog, s=25, alpha=0.75, label="Andersen — ALL")
+    plt.scatter(cMF, dFlog, s=25, alpha=0.75, label=f"{run_label} — ALL")
 
-    M_lo = float(np.min(b_all[0]))
-    M_hi = float(np.max(b_all[0]))
-    M_plot = np.logspace(np.log10(M_lo), np.log10(M_hi), 500)
+    M_plot = np.logspace(np.log10(float(np.min(cMA))), np.log10(float(np.max(cMA))), 500)
 
-    def overlay_lognormal(fit, color, linestyle, label):
+    def overlay_ln(fit, label):
         if not fit:
             return
         (A, logmc, sig), _ = fit
-        plt.plot(M_plot, lognormal_dndlogM(M_plot, A, logmc, sig),
-                 color=color, linestyle=linestyle, linewidth=2, alpha=0.9, label=label)
+        plt.plot(M_plot, lognormal_dndlogM(M_plot, A, logmc, sig), linewidth=2, alpha=0.85, label=label)
 
-    if fit_ln_all:
-        (A, logmc, sig), _ = fit_ln_all
-        overlay_lognormal(fit_ln_all, "black", "-", f"Log-normal (all): mc={10**logmc:.2f}, σ={sig:.2f}")
-    if fit_ln_acc:
-        (A, logmc, sig), _ = fit_ln_acc
-        overlay_lognormal(fit_ln_acc, "crimson", "--", f"Log-normal (passes GOF): mc={10**logmc:.2f}, σ={sig:.2f}")
+    if lnA:
+        (A, logmc, sig), _ = lnA
+        overlay_ln(lnA, f"Andersen LN (M≤{m_break:.2f}): mc={10**logmc:.2f}, σ={sig:.2f}")
+    if lnF:
+        (A, logmc, sig), _ = lnF
+        overlay_ln(lnF, f"Fit LN (M≤{m_break:.2f}): mc={10**logmc:.2f}, σ={sig:.2f}")
 
-    plt.xscale("log")
-    plt.yscale("log")
+    if andersen_pass.size and fit_pass.size:
+        bA_pass = make_dndlogM_fixed_edges(andersen_pass, edges_log)
+        bF_pass = make_dndlogM_fixed_edges(fit_pass, edges_log)
+        if bA_pass and bF_pass:
+            cMAp, _, dAlogp = bA_pass
+            cMFp, _, dFlogp = bF_pass
+            plt.scatter(cMAp, dAlogp, s=25, alpha=0.75, label="Andersen — PASS χ² GOF")
+            plt.scatter(cMFp, dFlogp, s=25, alpha=0.75, label=f"{run_label} — PASS χ² GOF")
+
+    plt.axvline(m_break, linestyle=":", linewidth=1)
+    plt.xscale("log"); plt.yscale("log")
     plt.xlabel("Mass (M$_\\odot$)")
     plt.ylabel("dN/dlog$_{10}$M")
-    plt.title(f"Log-normal IMF fits (bin width = {bin_width_dex:.2f} dex): {run_label}")
+    plt.title(f"IMF dN/dlogM (matched samples): {run_label}")
     plt.grid(True, which="both", alpha=0.3)
     plt.legend()
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, "imf_dndlogM_lognormal.png"), dpi=200)
+    plt.savefig(os.path.join(out_dir, "imf_dndlogM_lognormal_matched.png"), dpi=200)
     plt.close()
 
-    # Text summary
-    summary_path = os.path.join(out_dir, "imf_fit_summary.txt")
+    # Summary text
+    summary_path = os.path.join(out_dir, "imf_matched_summary.txt")
     with open(summary_path, "w") as f:
         f.write(f"Run: {run_label}\n")
-        f.write(f"Rows (all best-fits): {len(m_all)}\n")
-        if has_accept_curve:
-            f.write(f"Rows (passes GOF):    {len(m_acc)}\n")
-        else:
-            f.write("Rows (passes GOF):    N/A (GOF undefined or none passed)\n")
-        f.write("\n")
+        f.write(f"ALL matched N:        {len(d_all)}\n")
+        f.write(f"PASS χ² GOF matched N: {len(d_pass)}\n\n")
 
-        if fit_all:
-            f.write(f"Power-law (all): alpha={fit_all[0]:.6f}\n")
+        if fitA:
+            f.write(f"Andersen powerlaw (M≥{m_break}): alpha={fitA[0]:.6f}\n")
         else:
-            f.write("Power-law (all): not enough bins\n")
-
-        if fit_acc:
-            f.write(f"Power-law (passes GOF): alpha={fit_acc[0]:.6f}\n")
+            f.write("Andersen powerlaw: insufficient bins above break\n")
+        if fitF:
+            f.write(f"Fit powerlaw (M≥{m_break}): alpha={fitF[0]:.6f}\n")
         else:
-            f.write("Power-law (passes GOF): N/A\n")
+            f.write("Fit powerlaw: insufficient bins above break\n")
 
         f.write("\n")
-        if fit_ln_all:
-            (A, logmc, sig), _ = fit_ln_all
-            f.write(f"Log-normal (all): mc={10**logmc:.6f} Msun, sigma={sig:.6f} dex\n")
+        if lnA:
+            (A, logmc, sig), _ = lnA
+            f.write(f"Andersen lognormal (M≤{m_break}): mc={10**logmc:.6f} Msun, sigma={sig:.6f} dex\n")
         else:
-            f.write("Log-normal (all): not enough points\n")
+            f.write("Andersen lognormal: insufficient bins below break\n")
+        if lnF:
+            (A, logmc, sig), _ = lnF
+            f.write(f"Fit lognormal (M≤{m_break}): mc={10**logmc:.6f} Msun, sigma={sig:.6f} dex\n")
+        else:
+            f.write("Fit lognormal: insufficient bins below break\n")
 
-        if fit_ln_acc:
-            (A, logmc, sig), _ = fit_ln_acc
-            f.write(f"Log-normal (passes GOF): mc={10**logmc:.6f} Msun, sigma={sig:.6f} dex\n")
-        else:
-            f.write("Log-normal (passes GOF): N/A\n")
+
+# -----------------------------
+# Per-star AV-mass diagnostic plot
+# -----------------------------
+def plot_av_mass_acceptance(
+    arr: np.ndarray,
+    acceptable: np.ndarray,
+    best: np.void,
+    out_path: str,
+    title: str,
+    top_n: int = 300,
+    true_av: float | None = None,
+    true_mass: float | None = None,
+) -> None:
+    """
+    arr: dtype [("AV","AKs","mass","chi2")]
+    acceptable: subset of arr within threshold (may be empty)
+    best: one row
+    If acceptable empty, show the lowest top_n chi2 points.
+    Optionally overlays Andersen truth (true_mass, true_av).
+    """
+    ensure_dir(os.path.dirname(out_path))
+
+    a = arr[np.isfinite(arr["chi2"]) & np.isfinite(arr["AV"]) & np.isfinite(arr["mass"])]
+    if a.size == 0:
+        return
+
+    # pick points to display
+    if acceptable is not None and acceptable.size > 0:
+        show = acceptable
+        subtitle = f"accept pts={acceptable.size}"
+    else:
+        k = min(top_n, a.size)
+        idx = np.argpartition(a["chi2"], kth=k - 1)[:k]
+        show = a[idx]
+        subtitle = f"no accept region; showing lowest {k} chi2 pts"
+
+    plt.figure(figsize=(8, 6))
+    sc = plt.scatter(show["mass"], show["AV"], c=show["chi2"], s=10, alpha=0.75)
+    plt.colorbar(sc, label=r"$\chi^2$")
+
+    # Best fit
+    plt.scatter(
+        [best["mass"]], [best["AV"]],
+        marker="*", s=220, edgecolor="k", linewidth=0.8,
+        label="best fit",
+        zorder=5,
+    )
+
+    # Andersen truth (overlay)
+    if true_av is not None and true_mass is not None:
+        if np.isfinite(true_av) and np.isfinite(true_mass) and (true_av >= 0) and (true_mass > 0):
+            plt.scatter(
+                [true_mass], [true_av],
+                marker="X", s=140, edgecolor="k", linewidth=0.8,
+                label="Andersen truth",
+                zorder=6,
+            )
+
+    plt.xscale("log")
+    plt.xlabel("Mass (M$_\\odot$)")
+    plt.ylabel("AV")
+    plt.title(f"{title}\n{subtitle}")
+    plt.grid(True, which="both", alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=200)
+    plt.close()
 
 
 # -----------------------------
@@ -483,11 +591,8 @@ class SupersetGridFitter:
     """
     Generates a single (AV, mass) grid using a 6-filter superset isochrone,
     then evaluates chi2 for each run by slicing that same model grid.
-
-    Observed mags/errs are provided per run.
     """
 
-    # Superset filters and their isochrone column keys
     SUPER_FILT_LIST = [
         "jwst,F162M", "jwst,F182M", "jwst,F200W",
         "wfc3,ir,f125w", "wfc3,ir,f139m", "wfc3,ir,f160w",
@@ -508,6 +613,7 @@ class SupersetGridFitter:
         av_grid_halfwidth: float = 5.0,
         av_grid_step: float = 0.1,
         conf: float = 0.997,
+        lock_timeout_s: float = 600.0,
     ):
         self.iso_dir = iso_dir
         self.dist = dist
@@ -517,6 +623,7 @@ class SupersetGridFitter:
         self.av_grid_halfwidth = av_grid_halfwidth
         self.av_grid_step = av_grid_step
         self.conf = conf
+        self.lock_timeout_s = lock_timeout_s
 
         ensure_dir(self.iso_dir)
 
@@ -529,16 +636,40 @@ class SupersetGridFitter:
             "m_jwst_F162M": 1.62,
             "m_jwst_F182M": 1.82,
             "m_jwst_F200W": 2.00,
-            "m_hst_f125w": 1.25,
-            "m_hst_f139m": 1.39,
-            "m_hst_f160w": 1.60,
+            "m_hst_f125w":  1.25,
+            "m_hst_f139m":  1.39,
+            "m_hst_f160w":  1.60,
         }
 
         self.AV_to_AKs = 1.0 / 0.1179
         self.AKs_per_AV = 0.118
 
-        # Δχ² for df=2 parameters (mass, AV)
         self.delta_chi2 = float(chi2.ppf(self.conf, df=2))
+
+        self._lock_path = os.path.join(self.iso_dir, ".spisea_cache.lock")
+
+    # --- basic file lock to avoid partial-write races in SPISEA cache ---
+    def _acquire_lock(self):
+        import fcntl
+        start = time.time()
+        f = open(self._lock_path, "a+")
+        while True:
+            try:
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return f
+            except BlockingIOError:
+                if (time.time() - start) > self.lock_timeout_s:
+                    f.close()
+                    raise TimeoutError(f"Timed out acquiring lock: {self._lock_path}")
+                time.sleep(0.2)
+
+    @staticmethod
+    def _release_lock(f):
+        import fcntl
+        try:
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        finally:
+            f.close()
 
     @staticmethod
     def _cmd_obs(m162: float, m182: float) -> Tuple[float, float]:
@@ -581,27 +712,31 @@ class SupersetGridFitter:
             out.append(m - self.red_law.Cardelli89(wl, AKs))
         return out
 
-    def minimize_AKs_from_162_182(self, m162: float, e162: float, m182: float, e182: float) -> float:
+    def minimize_AKs_from_162_182(self, m162: float, m182: float) -> float:
         """
-        Initial guess for AV via minimizing CMD distance on unreddened *superset* isochrone.
+        Initial guess for AV via minimizing CMD distance on unreddened superset isochrone.
         """
-        iso_unredd = synthetic.IsochronePhot(
-            self.log_age,
-            AKs=0.0,
-            distance=self.dist,
-            metallicity=self.metallicity,
-            evo_model=self.evo_model,
-            atm_func=self.atm_func,
-            red_law=self.red_law,
-            filters=self.SUPER_FILT_LIST,
-            iso_dir=self.iso_dir,
-        )
+        lock = self._acquire_lock()
+        try:
+            iso_unredd = synthetic.IsochronePhot(
+                self.log_age,
+                AKs=0.0,
+                distance=self.dist,
+                metallicity=self.metallicity,
+                evo_model=self.evo_model,
+                atm_func=self.atm_func,
+                red_law=self.red_law,
+                filters=self.SUPER_FILT_LIST,
+                iso_dir=self.iso_dir,
+            )
+        finally:
+            self._release_lock(lock)
+
         interp = self.interpolate_isochrone_superset(iso_unredd, num_interp=self.interp_n)
 
         def objective(aks_trial: float) -> float:
             aks_trial = float(aks_trial)
             dered = self.apply_dereddening([m162, m182], aks_trial, self.A1_FILTERS)
-
             c_obs, y_obs = self._cmd_obs(dered[0], dered[1])
             c_iso = interp[self.A1_FILTERS[0]] - interp[self.A1_FILTERS[1]]
             y_iso = interp[self.A1_FILTERS[1]]
@@ -634,7 +769,6 @@ class SupersetGridFitter:
 
             return float(((c_obs - c_mod) ** 2) / (sig_c * sig_c) + ((y_obs - y_mod) ** 2) / (sig_y * sig_y))
 
-        # mags-only
         chi2_val = 0.0
         for i, f in enumerate(cfg.filters):
             sig = max(float(obs_errs[i]), 1e-3)
@@ -649,18 +783,18 @@ class SupersetGridFitter:
         row: Dict[str, float],
         runs_needed: List[FitRunConfig],
         filt_to_dat: Dict[str, Tuple[str, str]],
+        plots_root_by_run: Dict[str, str],
+        plot_top_n: int = 300,
     ) -> Dict[str, Dict[str, object]]:
         """
         Compute results for only the runs in runs_needed for this star.
         Returns dict: run_name -> result row dict.
+        Also writes a per-star AV-mass plot into each run's plots/ folder.
         """
 
-        # Observations needed for AV guess (always from 162/182)
-        m162, e162 = row["F162M"], row["e162"]
-        m182, e182 = row["F182M"], row["e182"]
-
-        # If AV guess inputs fail runner predicate, we will likely skip everything anyway.
-        aks_guess = self.minimize_AKs_from_162_182(m162, e162, m182, e182)
+        # AV guess inputs
+        m162, m182 = row["F162M"], row["F182M"]
+        aks_guess = self.minimize_AKs_from_162_182(m162, m182)
         av_guess = aks_guess * self.AV_to_AKs
 
         av_lo = max(0.0, av_guess - self.av_grid_halfwidth)
@@ -682,27 +816,31 @@ class SupersetGridFitter:
                     obs_mags.append(row[m_key])
                     obs_errs.append(row[e_key])
                 nobs = len(obs_mags)
-
             obs_by_run[cfg.name] = (obs_mags, obs_errs, nobs)
 
-        # Grid search (single superset model grid reused for all runs)
-        # We'll store (AV, AKs, mass, model_mags...) implicitly via entry + av.
+        # Run-specific chi2 lists
         results_by_run: Dict[str, List[Tuple[float, float, float, float]]] = {cfg.name: [] for cfg in runs_needed}
-        # tuple: (AV, AKs, mass, chi2_run)
 
+        # Grid search (superset model reused; note: still loops over AV, but avoids per-run iso generation)
         for av in av_grid:
             aks = av * self.AKs_per_AV
-            iso = synthetic.IsochronePhot(
-                self.log_age,
-                AKs=aks,
-                distance=self.dist,
-                metallicity=self.metallicity,
-                evo_model=self.evo_model,
-                atm_func=self.atm_func,
-                red_law=self.red_law,
-                filters=self.SUPER_FILT_LIST,
-                iso_dir=self.iso_dir,
-            )
+
+            lock = self._acquire_lock()
+            try:
+                iso = synthetic.IsochronePhot(
+                    self.log_age,
+                    AKs=aks,
+                    distance=self.dist,
+                    metallicity=self.metallicity,
+                    evo_model=self.evo_model,
+                    atm_func=self.atm_func,
+                    red_law=self.red_law,
+                    filters=self.SUPER_FILT_LIST,
+                    iso_dir=self.iso_dir,
+                )
+            finally:
+                self._release_lock(lock)
+
             interp = self.interpolate_isochrone_superset(iso, num_interp=self.interp_n)
 
             for entry in interp:
@@ -728,7 +866,7 @@ class SupersetGridFitter:
             chi2_threshold = min_chi2 + self.delta_chi2
             acceptable = arr[np.isfinite(arr["chi2"]) & (arr["chi2"] <= chi2_threshold)]
 
-            # GOF (only when dof_gof>=1)
+            # GOF (only if dof>=1)
             _, _, nobs = obs_by_run[cfg.name]
             dof_gof = int(nobs - 2)
             passes_gof = None
@@ -737,7 +875,7 @@ class SupersetGridFitter:
                 p_value = float(chi2.sf(min_chi2, df=dof_gof))
                 passes_gof = bool(p_value > (1.0 - self.conf))
 
-            # Bounds
+            # Bounds from acceptance region
             if acceptable.size == 0:
                 mass_min = mass_max = av_min = av_max = None
                 intersects = None
@@ -747,6 +885,20 @@ class SupersetGridFitter:
                 av_min = float(np.min(acceptable["AV"]))
                 av_max = float(np.max(acceptable["AV"]))
                 intersects = (av_min <= row["true_AV"] <= av_max) and (mass_min <= row["true_mass"] <= mass_max)
+
+            # Per-star diagnostic plot -> run/plots/
+            plot_dir = plots_root_by_run[cfg.name]
+            out_path = os.path.join(plot_dir, f"idx_{index_noncomment:06d}_lineno_{file_lineno:06d}.png")
+            plot_av_mass_acceptance(
+                arr=arr,
+                acceptable=acceptable,
+                best=best,
+                out_path=out_path,
+                title=f"{cfg.name} idx={index_noncomment} lineno={file_lineno}",
+                top_n=plot_top_n,
+                true_av=float(row["true_AV"]),
+                true_mass=float(row["true_mass"]),
+            )
 
             out[cfg.name] = {
                 "index": index_noncomment,
@@ -769,25 +921,31 @@ class SupersetGridFitter:
 
 
 # -----------------------------
-# Orchestration
+# Orchestration I/O
 # -----------------------------
 def setup_run_io(out_root: str, runs: List[FitRunConfig]) -> Tuple[
+    Dict[str, str],
     Dict[str, str],
     Dict[str, logging.Logger],
     Dict[str, set],
 ]:
     """
     Returns:
-      csv_path_by_run, logger_by_run, processed_index_set_by_run
+      csv_path_by_run, plots_dir_by_run, logger_by_run, processed_index_set_by_run
     """
     csv_paths: Dict[str, str] = {}
+    plots_dirs: Dict[str, str] = {}
     loggers: Dict[str, logging.Logger] = {}
     processed: Dict[str, set] = {}
 
     for cfg in runs:
         run_dir = os.path.join(out_root, cfg.name)
         ensure_dir(run_dir)
-        ensure_dir(os.path.join(run_dir, "plots"))
+        ensure_dir(os.path.join(run_dir, "compare_identity"))
+        ensure_dir(os.path.join(run_dir, "imf"))
+        plots_dir = os.path.join(run_dir, "plots")
+        ensure_dir(plots_dir)
+        plots_dirs[cfg.name] = plots_dir
 
         # Logger
         log_path = os.path.join(run_dir, f"{cfg.name}.log")
@@ -805,7 +963,6 @@ def setup_run_io(out_root: str, runs: List[FitRunConfig]) -> Tuple[
         csv_path = os.path.join(run_dir, f"fit_results_{cfg.name}.csv")
         csv_paths[cfg.name] = csv_path
 
-        # Load processed indices
         processed_set = set()
         if os.path.exists(csv_path):
             try:
@@ -817,7 +974,6 @@ def setup_run_io(out_root: str, runs: List[FitRunConfig]) -> Tuple[
                 logger.error("Could not read existing CSV for checkpointing: %s", e, exc_info=True)
         processed[cfg.name] = processed_set
 
-        # Ensure header exists
         if not os.path.exists(csv_path):
             with open(csv_path, "w", newline="") as csvfile:
                 fieldnames = [
@@ -839,7 +995,7 @@ def setup_run_io(out_root: str, runs: List[FitRunConfig]) -> Tuple[
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writeheader()
 
-    return csv_paths, loggers, processed
+    return csv_paths, plots_dirs, loggers, processed
 
 
 def append_row(csv_path: str, row: Dict[str, object]) -> None:
@@ -865,6 +1021,9 @@ def append_row(csv_path: str, row: Dict[str, object]) -> None:
         csvfile.flush()
 
 
+# -----------------------------
+# Main
+# -----------------------------
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dat", type=str, required=True, help="Path to phot_joined_avmass.dat")
@@ -876,10 +1035,12 @@ def main():
     parser.add_argument("--interp_n", type=int, default=10)
     parser.add_argument("--av_grid_halfwidth", type=float, default=5.0)
     parser.add_argument("--av_grid_step", type=float, default=0.1)
-    parser.add_argument("--conf", type=float, default=0.997)
+    parser.add_argument("--conf", type=float, default=0.95)
+    parser.add_argument("--plot_top_n", type=int, default=300, help="If no accept region, plot lowest-N chi2 points")
 
     parser.add_argument("--nbins_logM", type=int, default=25)
     parser.add_argument("--bin_width_dex", type=float, default=0.10)
+    parser.add_argument("--m_break", type=float, default=0.5)
 
     args = parser.parse_args()
 
@@ -925,10 +1086,9 @@ def main():
         ),
     ]
 
-    # Per-run logs/csvs/checkpoint sets
-    csv_paths, loggers, processed_by_run = setup_run_io(args.out_root, runs)
+    csv_paths, plots_dirs, loggers, processed_by_run = setup_run_io(args.out_root, runs)
 
-    # Isochrone cache directory (single superset cache shared by all runs)
+    # Shared superset iso cache
     superset_iso_dir = os.path.join(args.base_iso_dir, "superset_jwst_hst_all6_cache")
     ensure_dir(superset_iso_dir)
 
@@ -943,7 +1103,7 @@ def main():
         conf=args.conf,
     )
 
-    # Mapping for mags-only runs
+    # mapping for mags-only runs
     filt_to_dat = {
         "m_jwst_F162M": ("F162M", "e162"),
         "m_jwst_F182M": ("F182M", "e182"),
@@ -953,7 +1113,7 @@ def main():
         "m_hst_f160w":  ("F160W", "e160"),
     }
 
-    # Pre-scan truth for later plotting + also allow fast truth-by-index mapping
+    # Pre-scan truth
     truth_by_index: Dict[int, Tuple[float, float]] = {}
     truth_mass_all: List[float] = []
     truth_av_all: List[float] = []
@@ -973,7 +1133,7 @@ def main():
                 truth_mass_all.append(row["true_mass"])
                 truth_av_all.append(row["true_AV"])
 
-    # Main pass: iterate file again, compute only missing runs per index
+    # Main pass
     idx_noncomment = -1
     with open(args.dat, "r") as f:
         for lineno_1based, line in enumerate(f, start=1):
@@ -981,7 +1141,6 @@ def main():
                 continue
             idx_noncomment += 1
 
-            # Determine which runs still need this index
             runs_needed = [cfg for cfg in runs if idx_noncomment not in processed_by_run[cfg.name]]
             if not runs_needed:
                 continue
@@ -994,15 +1153,14 @@ def main():
 
             row = parse_phot_line(parts)
 
-            # Apply runner predicate per run, and only keep runs that pass
+            # per-run runner predicate
             runs_ready: List[FitRunConfig] = []
             for cfg in runs_needed:
                 if cfg.mode == "cmd_a1":
                     mags = [row["F162M"], row["F182M"]]
                     errs = [row["e162"], row["e182"]]
                 else:
-                    mags = []
-                    errs = []
+                    mags, errs = [], []
                     for f_iso in cfg.filters:
                         m_key, e_key = filt_to_dat[f_iso]
                         mags.append(row[m_key])
@@ -1010,7 +1168,7 @@ def main():
 
                 if should_skip_runner_style(mags, errs, row["true_AV"], row["true_mass"]):
                     loggers[cfg.name].info("Skip idx=%d lineno=%d (runner predicate)", idx_noncomment, lineno_1based)
-                    processed_by_run[cfg.name].add(idx_noncomment)  # treat as done (won't ever be fit)
+                    processed_by_run[cfg.name].add(idx_noncomment)
                     continue
 
                 runs_ready.append(cfg)
@@ -1018,7 +1176,6 @@ def main():
             if not runs_ready:
                 continue
 
-            # Compute fits (shared isochrone work)
             try:
                 results = fitter.analyze_star_for_runs(
                     index_noncomment=idx_noncomment,
@@ -1026,6 +1183,8 @@ def main():
                     row=row,
                     runs_needed=runs_ready,
                     filt_to_dat=filt_to_dat,
+                    plots_root_by_run=plots_dirs,
+                    plot_top_n=args.plot_top_n,
                 )
 
                 for cfg in runs_ready:
@@ -1049,7 +1208,7 @@ def main():
     truth_av = np.asarray(truth_av_all, dtype=float)
     mass_xlim, av_xlim = fixed_axis_limits_from_truth(truth_mass, truth_av)
 
-    # Post: attach truth + plots for each run
+    # Postprocess per run
     for cfg in runs:
         run_dir = os.path.join(args.out_root, cfg.name)
         csv_path = csv_paths[cfg.name]
@@ -1069,7 +1228,6 @@ def main():
             df.to_csv(out_truth_csv, index=False)
             logger.info("Wrote with-truth CSV: %s", out_truth_csv)
 
-            # Identity/error plots with fixed limits
             plot_identity_and_error_hist(
                 df=df,
                 out_dir=os.path.join(run_dir, "compare_identity"),
@@ -1078,13 +1236,14 @@ def main():
                 av_xlim=av_xlim,
             )
 
-            # IMF plots (with GOF behavior described in docstring)
-            plot_imf_and_fits(
-                df,
+            # Matched-sample IMFs (Andersen vs Fit; all vs accept-only)
+            plot_imfs_matched(
+                df=df,
                 out_dir=os.path.join(run_dir, "imf"),
                 run_label=cfg.name,
-                nbins_logM=args.nbins_logM,
+                nbins=args.nbins_logM,
                 bin_width_dex=args.bin_width_dex,
+                m_break=args.m_break,
             )
 
         except Exception as e:
