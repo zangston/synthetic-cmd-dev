@@ -318,6 +318,11 @@ def plot_imfs_matched(
       - defined only when dof_gof >= 1 (i.e., Nobs - Nparams >= 1)
       - Andersen_pass: true_mass on those same indices
       - Fit_pass:      best_mass on those same indices
+
+    New in this version:
+      - Fit/overlay lognormal curves for PASS samples too (on dN/dlogM plot)
+      - Overlay low-mass lognormal shapes on Counts and dN/dM plots (below m_break)
+        using conversions from dN/dlog10M
     """
     ensure_dir(out_dir)
 
@@ -362,7 +367,77 @@ def plot_imfs_matched(
     if not h_A_all or not h_F_all:
         return
 
-    # --- Counts plot ---
+    # ---------
+    # Helpers to overlay low-mass lognormal shapes on counts and dN/dM plots
+    # ---------
+    def _lognormal_counts_per_bin(edges_lin: np.ndarray, A: float, logmc: float, sig: float):
+        centers = np.sqrt(edges_lin[:-1] * edges_lin[1:])               # geometric centers
+        dlog = np.log10(edges_lin[1:]) - np.log10(edges_lin[:-1])       # bin widths in dex
+        dndlog = lognormal_dndlogM(centers, A, logmc, sig)              # dN/dlog10M at centers
+        Npred = dndlog * dlog                                           # predicted counts/bin
+        return centers, Npred
+
+    def _lognormal_dndm(M: np.ndarray, A: float, logmc: float, sig: float):
+        # dN/dM = (1 / (M ln 10)) * dN/dlog10M
+        return lognormal_dndlogM(M, A, logmc, sig) / (M * np.log(10.0))
+
+    def overlay_ln_counts(fit, edges_lin: np.ndarray, label: str, linestyle: str = "-"):
+        if not fit:
+            return
+        (A, logmc, sig), _ = fit
+        centers, Npred = _lognormal_counts_per_bin(edges_lin, A, logmc, sig)
+        mask = (centers <= m_break) & np.isfinite(Npred) & (Npred > 0)
+        if np.sum(mask) < 2:
+            return
+        plt.plot(centers[mask], Npred[mask], linewidth=2, alpha=0.85, linestyle=linestyle, label=label)
+
+    def overlay_ln_dndm(fit, label: str, linestyle: str = "-"):
+        if not fit:
+            return
+        (A, logmc, sig), _ = fit
+        # plot only up to break
+        mmin = max(0.01, float(edges[0]))
+        mmax = float(m_break)
+        if not (np.isfinite(mmin) and np.isfinite(mmax)) or mmax <= mmin:
+            return
+        M = np.logspace(np.log10(mmin), np.log10(mmax), 300)
+        y = _lognormal_dndm(M, A, logmc, sig)
+        mask = np.isfinite(y) & (y > 0)
+        if np.sum(mask) < 5:
+            return
+        plt.plot(M[mask], y[mask], linewidth=2, alpha=0.85, linestyle=linestyle, label=label)
+
+    # ---------
+    # Compute lognormal fits for ALL now (we'll also compute PASS later when available)
+    # Use dN/dlogM binnings because that’s what fit_lognormal_lowmass expects.
+    # ---------
+    bA_all = make_dndlogM_fixed_edges(andersen_all, edges_log)
+    bF_all = make_dndlogM_fixed_edges(fit_all, edges_log)
+    lnA = None
+    lnF = None
+    if bA_all and bF_all:
+        cMA, _, dAlog = bA_all
+        cMF, _, dFlog = bF_all
+        lnA = fit_lognormal_lowmass(cMA, dAlog, m_break=m_break)
+        lnF = fit_lognormal_lowmass(cMF, dFlog, m_break=m_break)
+
+    # Also compute PASS lognormal fits (for curve overlays) if PASS sample exists
+    lnA_pass = None
+    lnF_pass = None
+    bA_pass = None
+    bF_pass = None
+    if andersen_pass.size and fit_pass.size:
+        bA_pass = make_dndlogM_fixed_edges(andersen_pass, edges_log)
+        bF_pass = make_dndlogM_fixed_edges(fit_pass, edges_log)
+        if bA_pass and bF_pass:
+            cMAp, _, dAlogp = bA_pass
+            cMFp, _, dFlogp = bF_pass
+            lnA_pass = fit_lognormal_lowmass(cMAp, dAlogp, m_break=m_break)
+            lnF_pass = fit_lognormal_lowmass(cMFp, dFlogp, m_break=m_break)
+
+    # =================
+    # Counts plot
+    # =================
     plt.figure(figsize=(10, 5))
     cA, NA, _ = h_A_all
     cF, NF, _ = h_F_all
@@ -380,6 +455,18 @@ def plot_imfs_matched(
         msg = "PASS sample empty (none passed χ² GOF)" if has_any_gof else "PASS sample undefined (dof_gof<1 for all)"
         plt.text(0.02, 0.95, msg, transform=plt.gca().transAxes, va="top")
 
+    # Low-mass overlay fits (counts) — ALL and PASS
+    if lnA:
+        (A, logmc, sig), _ = lnA
+        overlay_ln_counts(lnA, edges, f"Andersen LN counts (M≤{m_break:.2f})", linestyle="-")
+    if lnF:
+        (A, logmc, sig), _ = lnF
+        overlay_ln_counts(lnF, edges, f"Fit LN counts (M≤{m_break:.2f})", linestyle="--")
+    if lnA_pass:
+        overlay_ln_counts(lnA_pass, edges, f"Andersen LN counts PASS (M≤{m_break:.2f})", linestyle=":")
+    if lnF_pass:
+        overlay_ln_counts(lnF_pass, edges, f"Fit LN counts PASS (M≤{m_break:.2f})", linestyle="-.")
+
     plt.axvline(m_break, linestyle=":", linewidth=1)
     plt.xscale("log"); plt.yscale("log")
     plt.xlabel("Mass (M$_\\odot$)")
@@ -391,7 +478,9 @@ def plot_imfs_matched(
     plt.savefig(os.path.join(out_dir, "imf_counts_matched.png"), dpi=200)
     plt.close()
 
-    # --- dN/dM plot + powerlaw fits above break ---
+    # =================
+    # dN/dM plot + powerlaw fits above break + lognormal below break
+    # =================
     plt.figure(figsize=(10, 6))
     cA, _, dA = h_A_all
     cF, _, dF = h_F_all
@@ -424,6 +513,18 @@ def plot_imfs_matched(
         plt.step(cAp, dAp, where="mid", linewidth=2, alpha=0.85, label="Andersen — PASS χ² GOF")
         plt.step(cFp, dFp, where="mid", linewidth=2, linestyle="--", alpha=0.85, label=f"{run_label} — PASS χ² GOF")
 
+    # Low-mass overlay fits (dN/dM) — ALL and PASS
+    if lnA:
+        (A, logmc, sig), _ = lnA
+        overlay_ln_dndm(lnA, f"Andersen LN dN/dM (M≤{m_break:.2f})", linestyle="-")
+    if lnF:
+        (A, logmc, sig), _ = lnF
+        overlay_ln_dndm(lnF, f"Fit LN dN/dM (M≤{m_break:.2f})", linestyle="--")
+    if lnA_pass:
+        overlay_ln_dndm(lnA_pass, f"Andersen LN dN/dM PASS (M≤{m_break:.2f})", linestyle=":")
+    if lnF_pass:
+        overlay_ln_dndm(lnF_pass, f"Fit LN dN/dM PASS (M≤{m_break:.2f})", linestyle="-.")
+
     plt.axvline(m_break, linestyle=":", linewidth=1)
     plt.xscale("log"); plt.yscale("log")
     plt.xlabel("Mass (M$_\\odot$)")
@@ -435,17 +536,15 @@ def plot_imfs_matched(
     plt.savefig(os.path.join(out_dir, "imf_dndm_matched.png"), dpi=200)
     plt.close()
 
-    # --- dN/dlogM plot + lognormal fits below break ---
-    bA_all = make_dndlogM_fixed_edges(andersen_all, edges_log)
-    bF_all = make_dndlogM_fixed_edges(fit_all, edges_log)
-    if not bA_all or not bF_all:
+    # =================
+    # dN/dlogM plot + lognormal fits below break (ALL + PASS curves)
+    # =================
+    # (Re-use the bA_all/bF_all already computed above)
+    if (bA_all is None) or (bF_all is None):
         return
 
     cMA, _, dAlog = bA_all
     cMF, _, dFlog = bF_all
-
-    lnA = fit_lognormal_lowmass(cMA, dAlog, m_break=m_break)
-    lnF = fit_lognormal_lowmass(cMF, dFlog, m_break=m_break)
 
     plt.figure(figsize=(10, 7))
     plt.scatter(cMA, dAlog, s=25, alpha=0.75, label="Andersen — ALL")
@@ -453,27 +552,39 @@ def plot_imfs_matched(
 
     M_plot = np.logspace(np.log10(float(np.min(cMA))), np.log10(float(np.max(cMA))), 500)
 
-    def overlay_ln(fit, label):
+    def overlay_ln(fit, label, linestyle: str = "-"):
         if not fit:
             return
         (A, logmc, sig), _ = fit
-        plt.plot(M_plot, lognormal_dndlogM(M_plot, A, logmc, sig), linewidth=2, alpha=0.85, label=label)
+        plt.plot(
+            M_plot,
+            lognormal_dndlogM(M_plot, A, logmc, sig),
+            linewidth=2,
+            alpha=0.85,
+            linestyle=linestyle,
+            label=label,
+        )
 
     if lnA:
         (A, logmc, sig), _ = lnA
-        overlay_ln(lnA, f"Andersen LN (M≤{m_break:.2f}): mc={10**logmc:.2f}, σ={sig:.2f}")
+        overlay_ln(lnA, f"Andersen LN (M≤{m_break:.2f}): mc={10**logmc:.2f}, σ={sig:.2f}", linestyle="-")
     if lnF:
         (A, logmc, sig), _ = lnF
-        overlay_ln(lnF, f"Fit LN (M≤{m_break:.2f}): mc={10**logmc:.2f}, σ={sig:.2f}")
+        overlay_ln(lnF, f"Fit LN (M≤{m_break:.2f}): mc={10**logmc:.2f}, σ={sig:.2f}", linestyle="--")
 
-    if andersen_pass.size and fit_pass.size:
-        bA_pass = make_dndlogM_fixed_edges(andersen_pass, edges_log)
-        bF_pass = make_dndlogM_fixed_edges(fit_pass, edges_log)
-        if bA_pass and bF_pass:
-            cMAp, _, dAlogp = bA_pass
-            cMFp, _, dFlogp = bF_pass
-            plt.scatter(cMAp, dAlogp, s=25, alpha=0.75, label="Andersen — PASS χ² GOF")
-            plt.scatter(cMFp, dFlogp, s=25, alpha=0.75, label=f"{run_label} — PASS χ² GOF")
+    if andersen_pass.size and fit_pass.size and bA_pass and bF_pass:
+        cMAp, _, dAlogp = bA_pass
+        cMFp, _, dFlogp = bF_pass
+        plt.scatter(cMAp, dAlogp, s=25, alpha=0.75, label="Andersen — PASS χ² GOF")
+        plt.scatter(cMFp, dFlogp, s=25, alpha=0.75, label=f"{run_label} — PASS χ² GOF")
+
+        # NEW: overlay lognormal curves for PASS samples too
+        if lnA_pass:
+            (A, logmc, sig), _ = lnA_pass
+            overlay_ln(lnA_pass, f"Andersen LN PASS (M≤{m_break:.2f}): mc={10**logmc:.2f}, σ={sig:.2f}", linestyle=":")
+        if lnF_pass:
+            (A, logmc, sig), _ = lnF_pass
+            overlay_ln(lnF_pass, f"Fit LN PASS (M≤{m_break:.2f}): mc={10**logmc:.2f}, σ={sig:.2f}", linestyle="-.")
 
     plt.axvline(m_break, linestyle=":", linewidth=1)
     plt.xscale("log"); plt.yscale("log")
@@ -486,7 +597,9 @@ def plot_imfs_matched(
     plt.savefig(os.path.join(out_dir, "imf_dndlogM_lognormal_matched.png"), dpi=200)
     plt.close()
 
+    # =================
     # Summary text
+    # =================
     summary_path = os.path.join(out_dir, "imf_matched_summary.txt")
     with open(summary_path, "w") as f:
         f.write(f"Run: {run_label}\n")
@@ -514,6 +627,18 @@ def plot_imfs_matched(
         else:
             f.write("Fit lognormal: insufficient bins below break\n")
 
+        f.write("\n")
+        if lnA_pass:
+            (A, logmc, sig), _ = lnA_pass
+            f.write(f"Andersen lognormal PASS (M≤{m_break}): mc={10**logmc:.6f} Msun, sigma={sig:.6f} dex\n")
+        else:
+            f.write("Andersen lognormal PASS: insufficient bins below break or PASS empty\n")
+        if lnF_pass:
+            (A, logmc, sig), _ = lnF_pass
+            f.write(f"Fit lognormal PASS (M≤{m_break}): mc={10**logmc:.6f} Msun, sigma={sig:.6f} dex\n")
+        else:
+            f.write("Fit lognormal PASS: insufficient bins below break or PASS empty\n")
+            
 
 # -----------------------------
 # Per-star AV-mass diagnostic plot
@@ -525,8 +650,8 @@ def plot_av_mass_acceptance(
     out_path: str,
     title: str,
     top_n: int = 300,
-    true_av: float | None = None,
-    true_mass: float | None = None,
+    true_av: Optional[float] = None,
+    true_mass: Optional[float] = None,
 ) -> None:
     """
     arr: dtype [("AV","AKs","mass","chi2")]

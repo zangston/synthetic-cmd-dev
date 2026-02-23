@@ -1,9 +1,12 @@
 Run: jwst_mags_all
 ALL matched N:        989
-PASS χ² GOF matched N: 646
+PASS χ² GOF matched N: 391
 
 Andersen powerlaw (M≥0.5): alpha=3.224731
 Fit powerlaw (M≥0.5): alpha=1.059587
 
 Andersen lognormal (M≤0.5): mc=0.083260 Msun, sigma=0.851249 dex
 Fit lognormal (M≤0.5): mc=0.066967 Msun, sigma=1.166646 dex
+
+Andersen lognormal PASS (M≤0.5): mc=0.227128 Msun, sigma=0.660202 dex
+Fit lognormal PASS (M≤0.5): mc=0.246249 Msun, sigma=0.615927 dex

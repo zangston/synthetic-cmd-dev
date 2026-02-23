@@ -7,3 +7,6 @@ Fit powerlaw (M≥0.5): alpha=2.715947
 
 Andersen lognormal (M≤0.5): mc=0.083260 Msun, sigma=0.851249 dex
 Fit lognormal (M≤0.5): mc=0.139486 Msun, sigma=0.822839 dex
+
+Andersen lognormal PASS: insufficient bins below break or PASS empty
+Fit lognormal PASS: insufficient bins below break or PASS empty
