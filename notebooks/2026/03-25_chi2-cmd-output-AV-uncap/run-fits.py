@@ -650,7 +650,6 @@ def plot_cmd_and_av_mass_acceptance(
     out_path: str,
     title: str,
     fitter,
-    top_n: int = 10,
     true_av: Optional[float] = None,
     true_mass: Optional[float] = None,
     obs_m162: Optional[float] = None,
@@ -664,7 +663,6 @@ def plot_cmd_and_av_mass_acceptance(
       - unreddened 1 Myr isochrone
       - best-AV reddened isochrone + best-fit point
       - AV +/- 1 mag reddened isochrones
-      - next 10 best-fit grid points in CMD space, colored by chi2
 
     Right panel:
       - acceptance region in AV-mass space
@@ -676,13 +674,6 @@ def plot_cmd_and_av_mass_acceptance(
     a = arr[np.isfinite(arr["chi2"]) & np.isfinite(arr["AV"]) & np.isfinite(arr["mass"])]
     if a.size == 0:
         return
-
-    # sort by chi2
-    order = np.argsort(a["chi2"])
-    a_sorted = a[order]
-
-    # next N best after the minimum
-    next_n = a_sorted[1:min(top_n + 1, len(a_sorted))]
 
     def get_interp_for_av(av_value: float):
         av_value = max(0.0, min(float(av_value), fitter.av_max))
@@ -754,21 +745,6 @@ def plot_cmd_and_av_mass_acceptance(
     ax.plot(clo, mlo, color="gray", linestyle="--", linewidth=1.2, label="AV = best - 1")
     ax.plot(chi, mhi, color="gray", linestyle=":", linewidth=1.2, label="AV = best + 1")
     ax.plot(cb, mb, color="crimson", linewidth=2.0, label="Isochrone at best AV")
-
-    # next 10 best-fit points
-    if len(next_n) > 0:
-        sc = ax.scatter(
-            next_n["m162"] - next_n["m182"],
-            next_n["m162"],
-            c=next_n["chi2"],
-            cmap="viridis",
-            s=40,
-            edgecolor="k",
-            linewidth=0.3,
-            label="Next 10 best grid points",
-            zorder=5,
-        )
-        fig.colorbar(sc, ax=ax, label=r"$\chi^2$ (next 10 best)")
 
     # best-fit point
     ax.scatter(
@@ -1162,7 +1138,6 @@ class SupersetGridFitter:
                 out_path=out_path,
                 title=f"{cfg.name} idx={index_noncomment} lineno={file_lineno}",
                 fitter=self,
-                top_n=10,
                 true_av=float(row["true_AV"]),
                 true_mass=float(row["true_mass"]),
                 obs_m162=float(row["F162M"]),
