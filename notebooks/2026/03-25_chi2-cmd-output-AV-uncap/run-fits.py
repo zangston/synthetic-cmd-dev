@@ -44,6 +44,7 @@ from typing import List, Tuple, Dict, Optional
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 from scipy.stats import chi2
 from scipy.optimize import minimize_scalar
@@ -705,12 +706,13 @@ def plot_cmd_and_av_mass_acceptance(
     def cmd_coords(tab):
         color = tab["m_jwst_F162M"] - tab["m_jwst_F182M"]
         mag = tab["m_jwst_F162M"]
-        return color, mag
+        is_interp = tab["is_interp"] if "is_interp" in tab.dtype.names else np.zeros(len(tab), dtype=bool)
+        return color, mag, is_interp
 
-    c0, m0 = cmd_coords(iso0)
-    cb, mb = cmd_coords(iso_best)
-    clo, mlo = cmd_coords(iso_lo)
-    chi, mhi = cmd_coords(iso_hi)
+    c0, m0, interp0 = cmd_coords(iso0)
+    cb, mb, interp_best = cmd_coords(iso_best)
+    clo, mlo, interp_lo = cmd_coords(iso_lo)
+    chi, mhi, interp_hi = cmd_coords(iso_hi)
 
     best_color = float(best["m162"] - best["m182"])
     best_mag = float(best["m162"])
@@ -736,15 +738,64 @@ def plot_cmd_and_av_mass_acceptance(
         show = a[idx]
         subtitle = "no acceptance region; showing lowest chi2 points"
 
+    def draw_isochrone(ax, color, mag, is_interp, line_color, label_line,
+                    alpha_line=0.35, s_orig=22, s_interp=8,
+                    color_orig="red", color_interp="black",
+                    z_line=1, z_pts=2):
+        # lightly transparent curve
+        ax.plot(color, mag, color=line_color, linewidth=1.5, alpha=alpha_line,
+                label=label_line, zorder=z_line)
+
+        # inserted interpolation points
+        mask_interp = np.asarray(is_interp, dtype=bool)
+        if np.any(mask_interp):
+            ax.scatter(
+                color[mask_interp], mag[mask_interp],
+                s=s_interp, c=color_interp, alpha=0.8,
+                zorder=z_pts, linewidth=0
+            )
+
+        # original SPISEA points
+        mask_orig = ~mask_interp
+        if np.any(mask_orig):
+            ax.scatter(
+                color[mask_orig], mag[mask_orig],
+                s=s_orig, c=color_orig, alpha=0.9,
+                zorder=z_pts + 0.1, linewidth=0
+            )
+
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
     # ---------------- left: CMD ----------------
     ax = axes[0]
 
-    ax.plot(c0, m0, color="black", linewidth=1.5, label="1 Myr isochrone, AV=0")
-    ax.plot(clo, mlo, color="gray", linestyle="--", linewidth=1.2, label="AV = best - 1")
-    ax.plot(chi, mhi, color="gray", linestyle=":", linewidth=1.2, label="AV = best + 1")
-    ax.plot(cb, mb, color="crimson", linewidth=2.0, label="Isochrone at best AV")
+    draw_isochrone(
+        ax, c0, m0, interp0,
+        line_color="black",
+        label_line="1 Myr isochrone, AV=0",
+        alpha_line=0.30
+    )
+
+    draw_isochrone(
+        ax, clo, mlo, interp_lo,
+        line_color="gray",
+        label_line="AV = best - 1",
+        alpha_line=0.25
+    )
+
+    draw_isochrone(
+        ax, chi, mhi, interp_hi,
+        line_color="dimgray",
+        label_line="AV = best + 1",
+        alpha_line=0.25
+    )
+
+    draw_isochrone(
+        ax, cb, mb, interp_best,
+        line_color="crimson",
+        label_line="Isochrone at best AV",
+        alpha_line=0.45
+    )
 
     # best-fit point
     ax.scatter(
@@ -764,12 +815,21 @@ def plot_cmd_and_av_mass_acceptance(
             label="Observed photometry", zorder=7
         )
 
+    point_legend = [
+        Line2D([0], [0], marker='o', color='w', markerfacecolor='red',
+               markersize=6, label='Original SPISEA points'),
+        Line2D([0], [0], marker='o', color='w', markerfacecolor='black',
+               markersize=4, label='Inserted interpolation points'),
+    ]
+
     ax.set_xlabel("F162M - F182M")
     ax.set_ylabel("F162M")
     ax.set_title("CMD fitting view")
     ax.invert_yaxis()
     ax.grid(True, alpha=0.3)
-    ax.legend(loc="best", fontsize=8)
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(handles + point_legend, labels + [h.get_label() for h in point_legend],
+              loc="best", fontsize=8)
 
     # ---------------- right: AV-mass ----------------
     ax = axes[1]
@@ -915,19 +975,24 @@ class SupersetGridFitter:
             interp_masses = np.linspace(m1, m2, num=num_interp + 2)[1:-1]
 
             interp_row = {
-                f: np.linspace(isochrone.points[f][i], isochrone.points[f][i + 1], num=num_interp + 2)[1:-1]
+                f: np.linspace(
+                    isochrone.points[f][i],
+                    isochrone.points[f][i + 1],
+                    num=num_interp + 2
+                )[1:-1]
                 for f in use_filters
             }
 
             for j in range(len(interp_masses)):
-                entry = [interp_masses[j]] + [interp_row[f][j] for f in use_filters]
+                entry = [interp_masses[j]] + [interp_row[f][j] for f in use_filters] + [True]
                 interp_data.append(tuple(entry))
 
+        # Original SPISEA grid points
         for i in range(len(masses)):
-            entry = [masses[i]] + [isochrone.points[f][i] for f in use_filters]
+            entry = [masses[i]] + [isochrone.points[f][i] for f in use_filters] + [False]
             interp_data.append(tuple(entry))
 
-        dtype = [("mass", float)] + [(f, float) for f in use_filters]
+        dtype = [("mass", float)] + [(f, float) for f in use_filters] + [("is_interp", bool)]
         return np.array(sorted(interp_data, key=lambda x: x[0]), dtype=dtype)
 
     def apply_dereddening(self, mags: List[float], AKs: float, filters: List[str]) -> List[float]:
