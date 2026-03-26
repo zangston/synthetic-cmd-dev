@@ -1,0 +1,12 @@
+Run: jwst_cmd_F162MminusF182M_vs_F162M
+ALL matched N:        989
+PASS χ² GOF matched N: 0
+
+Andersen powerlaw (M≥0.5): alpha=2.689235
+Fit powerlaw (M≥0.5): alpha=2.682868
+
+Andersen lognormal (M≤0.5): mc=0.083260 Msun, sigma=0.851249 dex
+Fit lognormal (M≤0.5): mc=0.148692 Msun, sigma=0.846265 dex
+
+Andersen lognormal PASS: insufficient bins below break or PASS empty
+Fit lognormal PASS: insufficient bins below break or PASS empty
