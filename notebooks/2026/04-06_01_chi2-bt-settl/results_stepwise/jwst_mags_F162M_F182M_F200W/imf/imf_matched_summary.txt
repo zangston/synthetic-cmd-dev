@@ -1,0 +1,12 @@
+Run: jwst_mags_F162M_F182M_F200W
+ALL matched N:        989
+PASS χ² GOF matched N: 395
+
+Andersen powerlaw (M≥0.5): alpha=3.224731
+Fit powerlaw (M≥0.5): alpha=0.880826
+
+Andersen lognormal (M≤0.5): mc=0.083260 Msun, sigma=0.851249 dex
+Fit lognormal (M≤0.5): mc=0.071127 Msun, sigma=1.267561 dex
+
+Andersen lognormal PASS (M≤0.5): mc=0.233813 Msun, sigma=0.665383 dex
+Fit lognormal PASS (M≤0.5): mc=0.310184 Msun, sigma=0.688274 dex
