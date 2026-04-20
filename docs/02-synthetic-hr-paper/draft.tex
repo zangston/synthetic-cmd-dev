@@ -1,0 +1,530 @@
+%% Beginning of file 'sample631.tex'
+%%
+%% Modified 2022 May  
+%%
+%% This is a sample manuscript marked up using the
+%% AASTeX v6.31 LaTeX 2e macros.
+%%
+%% AASTeX is now based on Alexey Vikhlinin's emulateapj.cls 
+%% (Copyright 2000-2015).  See the classfile for details.
+
+%% AASTeX requires revtex4-1.cls and other external packages such as
+%% latexsym, graphicx, amssymb, longtable, and epsf.  Note that as of 
+%% Oct 2020, APS now uses revtex4.2e for its journals but remember that 
+%% AASTeX v6+ still uses v4.1. All of these external packages should 
+%% already be present in the modern TeX distributions but not always.
+%% For example, revtex4.1 seems to be missing in the linux version of
+%% TexLive 2020. One should be able to get all packages from www.ctan.org.
+%% In particular, revtex v4.1 can be found at 
+%% https://www.ctan.org/pkg/revtex4-1.
+
+%% The first piece of markup in an AASTeX v6.x document is the \documentclass
+%% command. LaTeX will ignore any data that comes before this command. The 
+%% documentclass can take an optional argument to modify the output style.
+%% The command below calls the preprint style which will produce a tightly 
+%% typeset, one-column, single-spaced document.  It is the default and thus
+%% does not need to be explicitly stated.
+%%
+%% using aastex version 6.3
+\documentclass[linenumbers, twocolumn]{aastex631}
+
+%% The default is a single spaced, 10 point font, single spaced article.
+%% There are 5 other style options available via an optional argument. They
+%% can be invoked like this:
+%%
+%% \documentclass[arguments]{aastex631}
+%% 
+%% where the layout options are:
+%%
+%%  twocolumn   : two text columns, 10 point font, single spaced article.
+%%                This is the most compact and represent the final published
+%%                derived PDF copy of the accepted manuscript from the publisher
+%%  manuscript  : one text column, 12 point font, double spaced article.
+%%  preprint    : one text column, 12 point font, single spaced article.  
+%%  preprint2   : two text columns, 12 point font, single spaced article.
+%%  modern      : a stylish, single text column, 12 point font, article with
+%% 		  wider left and right margins. This uses the Daniel
+%% 		  Foreman-Mackey and David Hogg design.
+%%  RNAAS       : Supresses an abstract. Originally for RNAAS manuscripts 
+%%                but now that abstracts are required this is obsolete for
+%%                AAS Journals. Authors might need it for other reasons. DO NOT
+%%                use \begin{abstract} and \end{abstract} with this style.
+%%
+%% Note that you can submit to the AAS Journals in any of these 6 styles.
+%%
+%% There are other optional arguments one can invoke to allow other stylistic
+%% actions. The available options are:
+%%
+%%   astrosymb    : Loads Astrosymb font and define \astrocommands. 
+%%   tighten      : Makes baselineskip slightly smaller, only works with 
+%%                  the twocolumn substyle.
+%%   times        : uses times font instead of the default
+%%   linenumbers  : turn on lineno package.
+%%   trackchanges : required to see the revision mark up and print its output
+%%   longauthor   : Do not use the more compressed footnote style (default) for 
+%%                  the author/collaboration/affiliations. Instead print all
+%%                  affiliation information after each name. Creates a much 
+%%                  longer author list but may be desirable for short 
+%%                  author papers.
+%% twocolappendix : make 2 column appendix.
+%%   anonymous    : Do not show the authors, affiliations and acknowledgments 
+%%                  for dual anonymous review.
+%%
+%% these can be used in any combination, e.g.
+%%
+%% \documentclass[twocolumn,linenumbers,trackchanges]{aastex631}
+%%
+%% AASTeX v6.* now includes \hyperref support. While we have built in specific
+%% defaults into the classfile you can manually override them with the
+%% \hypersetup command. For example,
+%%
+%% \hypersetup{linkcolor=red,citecolor=green,filecolor=cyan,urlcolor=magenta}
+%%
+%% will change the color of the internal links to red, the links to the
+%% bibliography to green, the file links to cyan, and the external links to
+%% magenta. Additional information on \hyperref options can be found here:
+%% https://www.tug.org/applications/hyperref/manual.html#x1-40003
+%%
+%% Note that in v6.3 "bookmarks" has been changed to "true" in hyperref
+%% to improve the accessibility of the compiled pdf file.
+%%
+%% If you want to create your own macros, you can do so
+%% using \newcommand. Your macros should appear before
+%% the \begin{document} command.
+%%
+\newcommand{\vdag}{(v)^\dagger}
+\newcommand\aastex{AAS\TeX}
+\newcommand\latex{La\TeX}
+
+%% Reintroduced the \received and \accepted commands from AASTeX v5.2
+%\received{March 1, 2021}
+%\revised{April 1, 2021}
+%\accepted{\today}
+
+%% Command to document which AAS Journal the manuscript was submitted to.
+%% Adds "Submitted to " the argument.
+%\submitjournal{PSJ}
+
+%% For manuscript that include authors in collaborations, AASTeX v6.31
+%% builds on the \collaboration command to allow greater freedom to 
+%% keep the traditional author+affiliation information but only show
+%% subsets. The \collaboration command now must appear AFTER the group
+%% of authors in the collaboration and it takes TWO arguments. The last
+%% is still the collaboration identifier. The text given in this
+%% argument is what will be shown in the manuscript. The first argument
+%% is the number of author above the \collaboration command to show with
+%% the collaboration text. If there are authors that are not part of any
+%% collaboration the \nocollaboration command is used. This command takes
+%% one argument which is also the number of authors above to show. A
+%% dashed line is shown to indicate no collaboration. This example manuscript
+%% shows how these commands work to display specific set of authors 
+%% on the front page.
+%%
+%% For manuscript without any need to use \collaboration the 
+%% \AuthorCollaborationLimit command from v6.2 can still be used to 
+%% show a subset of authors.
+%
+%\AuthorCollaborationLimit=2
+%
+%% will only show Schwarz & Muench on the front page of the manuscript
+%% (assuming the \collaboration and \nocollaboration commands are
+%% commented out).
+%%
+%% Note that all of the author will be shown in the published article.
+%% This feature is meant to be used prior to acceptance to make the
+%% front end of a long author article more manageable. Please do not use
+%% this functionality for manuscripts with less than 20 authors. Conversely,
+%% please do use this when the number of authors exceeds 40.
+%%
+%% Use \allauthors at the manuscript end to show the full author list.
+%% This command should only be used with \AuthorCollaborationLimit is used.
+
+%% The following command can be used to set the latex table counters.  It
+%% is needed in this document because it uses a mix of latex tabular and
+%% AASTeX deluxetables.  In general it should not be needed.
+%\setcounter{table}{1}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% The following section outlines numerous optional output that
+%% can be displayed in the front matter or as running meta-data.
+%%
+%% If you wish, you may supply running head information, although
+%% this information may be modified by the editorial offices.
+%\shorttitle{AASTeX v6.3.1 Sample article}
+%\shortauthors{Schwarz et al.}
+%%
+%% You can add a light gray and diagonal water-mark to the first page 
+%% with this command:
+%% \watermark{text}
+%% where "text", e.g. DRAFT, is the text to appear.  If the text is 
+%% long you can control the water-mark size with:
+%% \setwatermarkfontsize{dimension}
+%% where dimension is any recognized LaTeX dimension, e.g. pt, in, etc.
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\graphicspath{{./}{figures/}}
+%% This is the end of the preamble.  Indicate the beginning of the
+%% manuscript itself with \begin{document}.
+
+\begin{document}
+
+\title{Deducing the Physical Characteristics of Cloud Collapse via Forward and Reverse-Modeling of Protoclusters}
+
+%% LaTeX will automatically break titles if they run longer than
+%% one line. However, you may use \\ to force a line break if
+%% you desire. In v6.31 you can include a footnote in the title.
+
+%% A significant change from earlier AASTEX versions is in the structure for 
+%% calling author and affiliations. The change was necessary to implement 
+%% auto-indexing of affiliations which prior was a manual process that could 
+%% easily be tedious in large author manuscripts.
+%%
+%% The \author command is the same as before except it now takes an optional
+%% argument which is the 16 digit ORCID. The syntax is:
+%% \author[xxxx-xxxx-xxxx-xxxx]{Author Name}
+%%
+%% This will hyperlink the author name to the author's ORCID page. Note that
+%% during compilation, LaTeX will do some limited checking of the format of
+%% the ID to make sure it is valid. If the "orcid-ID.png" image file is 
+%% present or in the LaTeX pathway, the OrcID icon will appear next to
+%% the authors name.
+%%
+%% Use \affiliation for affiliation information. The old \affil is now aliased
+%% to \affiliation. AASTeX v6.31 will automatically index these in the header.
+%% When a duplicate is found its index will be the same as its previous entry.
+%%
+%% Note that \altaffilmark and \altaffiltext have been removed and thus 
+%% can not be used to document secondary affiliations. If they are used latex
+%% will issue a specific error message and quit. Please use multiple 
+%% \affiliation calls for to document more than one affiliation.
+%%
+%% The new \altaffiliation can be used to indicate some secondary information
+%% such as fellowships. This command produces a non-numeric footnote that is
+%% set away from the numeric \affiliation footnotes.  NOTE that if an
+%% \altaffiliation command is used it must come BEFORE the \affiliation call,
+%% right after the \author command, in order to place the footnotes in
+%% the proper location.
+%%
+%% Use \email to set provide email addresses. Each \email will appear on its
+%% own line so you can put multiple email address in one \email call. A new
+%% \correspondingauthor command is available in V6.31 to identify the
+%% corresponding author of the manuscript. It is the author's responsibility
+%% to make sure this name is also in the author list.
+%%
+%% While authors can be grouped inside the same \author and \affiliation
+%% commands it is better to have a single author for each. This allows for
+%% one to exploit all the new benefits and should make book-keeping easier.
+%%
+%% If done correctly the peer review system will be able to
+%% automatically put the author and affiliation information from the manuscript
+%% and save the corresponding author the trouble of entering it by hand.
+
+%\correspondingauthor{August Muench}
+%\email{greg.schwarz@aas.org, gus.muench@aas.org}
+
+\author[0009-0004-8200-9910]{Winston Zhang}
+\affiliation{University of Virginia, Department of Astronomy \\
+Charlottesville, VA 22904, USA}
+
+\author[0000-0002-4725-7589]{Aayush Gautam}
+\affiliation{Tribhuvan University, Department of Physics \\
+Bharatpur 44207, Nepal}
+\affiliation{University of Virginia, Department of Astronomy \\
+Charlottesville, VA 22904, USA}
+
+\author[0000-0002-5851-2602]{Juan Farias}
+\affiliation{Chalmers University of Technology, Department of Space, Earth \& Environment \\
+Gothenburg, Sweden}
+\affiliation{University of Texas at Austin, Department of Astronomy \\
+Austin, TX 78712, USA}
+
+%\author{Aabha Brizawasi}
+%\affiliation{Indian Institute of Science Education and Research \\
+% Mohali, India}
+
+\author{Morten Andersen}
+\affiliation{European Southern Observatory \\
+München, Germany}
+
+\author{Jonathan Tan}
+\affiliation{University of Virginia, Department of Astronomy \\
+Charlottesville, VA 22904, USA}
+\affiliation{Chalmers University of Technology, Department of Space, Earth \& Environment \\
+Gothenburg, Sweden}
+
+%% Note that the \and command from previous versions of AASTeX is now
+%% depreciated in this version as it is no longer necessary. AASTeX 
+%% automatically takes care of all commas and "and"s between authors names.
+
+%% AASTeX 6.31 has the new \collaboration and \nocollaboration commands to
+%% provide the collaboration status of a group of authors. These commands 
+%% can be used either before or after the list of corresponding authors. The
+%% argument for \collaboration is the collaboration identifier. Authors are
+%% encouraged to surround collaboration identifiers with ()s. The 
+%% \nocollaboration command takes no argument and exists to indicate that
+%% the nearby authors are not part of surrounding collaborations.
+
+%% Mark off the abstract in the ``abstract'' environment. 
+\begin{abstract}
+
+placeholder abstract
+
+\end{abstract}
+
+%% Keywords should appear after the \end{abstract} command. 
+%% The AAS Journals now uses Unified Astronomy Thesaurus concepts:
+%% https://astrothesaurus.org
+%% You will be asked to selected these concepts during the submission process
+%% but this old "keyword" functionality is maintained in case authors want
+%% to include these concepts in their preprints.
+\keywords{}
+
+%% From the front matter, we move on to the body of the paper.
+%% Sections are demarcated by \section and \subsection, respectively.
+%% Observe the use of the LaTeX \label
+%% command after the \subsection to give a symbolic KEY to the
+%% subsection for cross-referencing in a \ref command.
+%% You can use LaTeX's \ref and \label commands to keep track of
+%% cross-references to sections, equations, tables, and figures.
+%% That way, if you change the order of any elements, LaTeX will
+%% automatically renumber them.
+%%
+%% We recommend that authors also use the natbib \citep
+%% and \citet commands to identify citations.  The citations are
+%% tied to the reference list via symbolic KEYs. The KEY corresponds
+%% to the KEY in the \bibitem in the reference list below. 
+
+\section{Introduction} \label{sec:intro}
+placeholder intro
+
+\section{Related Works}\label{sec:related}
+The formation and early evolution of star clusters have been explored extensively through numerical simulations that couple gravitational dynamics with prescriptions for star formation. In particular, \citet{Farias2019} present Nbody6 simulations of protoclusters forming within collapsing molecular clouds, demonstrating that the cloud surface density and star formation efficiency per freefall time ($\epsilon_{\mathrm{ff}}$) regulate both the duration of star formation and the resulting stellar age spread. These simulations provide a physically motivated link between cloud-scale properties and observable stellar populations.
+
+Synthetic diagram modeling has previously been used to connect such simulations to observable parameter spaces. \citet{Masegian2021} generated synthetic Hertzsprung–Russell (H–R) diagrams by interpolating stellar masses and ages from cluster simulations onto theoretical isochrones, quantifying the relationship between age spread and luminosity dispersion. That work established that luminosity spread in H–R space is positively correlated with the underlying stellar age spread induced by extended star formation histories.
+
+Extending this approach into observable photometric space, \citet{Zhang2024} implemented a forward-modeling framework that combined Nbody6 simulation outputs with synthetic photometry from SPISEA \citep{Hosek2020} to generate color–magnitude diagrams (CMDs) of forming protoclusters. That study demonstrated that magnitude spread in CMD space similarly traces stellar age spread and therefore encodes information about the parent cloud’s collapse timescale and density.
+
+While these prior works established the forward relationship between cloud physics, age spread, and diagram morphology, they did not address the inverse problem: recovering stellar and cloud parameters directly from multi-filter photometric observations. The present study builds upon these forward-modeling foundations by introducing a statistical reverse-modeling framework based on $\chi^2$ minimization to infer stellar masses, extinction, and cluster formation parameters from synthetic CMDs. This extension enables quantitative evaluation of how well observable photometric data can constrain the physical conditions of cluster formation.
+
+
+
+
+
+
+
+
+
+
+
+
+\section{Results \& Analysis} \label{sec:results}
+
+\subsection{Forward Modeling}
+The forward modeling pipeline produces synthetic color–magnitude diagrams (CMDs) from simulated protocluster populations by mapping stellar masses and ages onto photometric magnitudes through a grid of theoretical isochrones. In this section we demonstrate the construction of the CMDs and illustrate how cluster evolution and binary populations affect the resulting morphology.
+
+\subsubsection{Isochrone Grid Interpolation}
+The interpolation framework relies on a dense grid of stellar isochrones spanning a range of ages relevant to young star-forming regions. Figure~\ref{fig:iso-grid} shows an example grid generated using the SPISEA stellar population synthesis package. Each curve represents the photometric locus of stars with different masses at a fixed age. Younger isochrones generally appear brighter at a given color due to the higher luminosities of pre–main-sequence stars. By sampling a sufficiently fine age grid, it becomes possible to estimate the photometric properties of stars whose ages fall between discrete isochrone models.
+
+\begin{figure} [ht]
+    \centering
+    \includegraphics[width=1\linewidth]{science-images/fig_isochrone_grid_f162m_f182m.png}
+    \caption{Example SPISEA isochrone grid spanning 0.5–20 Myr used for CMD interpolation. Each curve represents the photometric locus of stars of different mass at a fixed age.}
+    \label{fig:iso-grid}
+\end{figure}
+
+The mapping between simulated stellar properties and observable magnitudes is performed through interpolation in both stellar mass and age. Figure~\ref{fig:iso-interp-example} illustrates this process schematically. For a star with a mass and age that do not exactly coincide with the available isochrone grid points, interpolation is first performed along the mass axis within each neighboring isochrone to determine the corresponding magnitudes. These intermediate points are then interpolated in age to produce the final photometric position of the star on the CMD. This bilinear interpolation procedure allows the simulation outputs to be translated into continuous CMD distributions while preserving the physical trends encoded in the stellar evolution models.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=1\linewidth]{science-images/fig_interpolation_schematic_f162m_f182m.png}
+    \caption{Example bilinear interpolation using two isochrones to yield a 0.26 $M_\odot$, 1.5 Myr old star.}
+    \label{fig:iso-interp-example}
+\end{figure}
+
+Applying this procedure to the stellar population produced by an $N$-body simulation yields a synthetic CMD representing the appearance of the cluster at a particular evolutionary stage. Figure~\ref{fig:cmd-example} shows an example CMD constructed from a cluster snapshot with a cloud density of $1.0\,g\,m^{-3}$, freefall efficiency parameter $\epsilon_{\rm ff}=0.03$, and cluster age of 1.5 Myr. Each point corresponds to an individual simulated star whose mass and age have been converted to photometric magnitudes through the interpolation procedure described above. The resulting CMD traces the expected pre–main-sequence structure, with a concentration of stars along the isochrone locus and a spread in magnitude that reflects the intrinsic age distribution of the cluster.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=1\linewidth]{science-images/fig_cmd_example_f162m_f182m.png}
+    \caption{Example CMD generated using only primary stars from a cluster simulation with density 1.0 $g/m^3$, freefall parameter of 0.03, and cluster age of 1.5 Myr.}
+    \label{fig:cmd-example}
+\end{figure}
+
+\subsubsection{Modeling Binarity}
+Binary systems introduce an additional observational effect that must be considered when constructing synthetic CMDs. In simulations, binary stars are resolved as separate objects with distinct masses and ages, whereas observationally many binaries appear as unresolved systems whose combined flux shifts their position on the CMD. Figure~\ref{fig:cmd-binaries} compares these two cases. When binaries are treated as resolved sources, both components appear separately on the CMD, increasing the point density near the isochrone tracks. When binaries are treated as unresolved systems, their fluxes are combined, producing brighter composite sources that shift upward in magnitude relative to single stars. This effect broadens the CMD sequence and introduces additional scatter that must be accounted for when comparing simulations to observational data.
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=1\linewidth]{science-images/fig_cmd_binaries_f162m_f182m.png}
+    \caption{Example CMDs demonstrating the difference between treating binary systems as resolve and unresolved.}
+    \label{fig:cmd-binaries}
+\end{figure*}
+
+
+\subsubsection{Age evolution in the CMD}
+The morphology of the CMD evolves as the cluster ages. Figure~\ref{fig:cmd-age-grid} shows the synthetic CMD at several cluster ages while holding the cloud density and freefall efficiency fixed. At earlier times, the stellar population occupies brighter magnitudes due to the elevated luminosities of young pre–main-sequence stars. As the cluster evolves, stars gradually move toward fainter magnitudes and the CMD sequence becomes more tightly clustered around the underlying isochrone tracks. The apparent spread in magnitude therefore depends not only on observational effects such as unresolved binaries, but also on the intrinsic age distribution produced by the star formation history of the molecular cloud.
+
+These results demonstrate that the forward modeling framework successfully translates simulated cluster populations into synthetic CMDs whose morphology reflects both stellar evolution and cluster formation physics. In the following analysis, these synthetic CMDs provide the basis for exploring how variations in the physical properties of the progenitor molecular cloud influence observable features of young star clusters.
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=1\linewidth]{science-images/fig_cmd_age_grid_f162m_f182m.png}
+    \caption{Grid of CMDs showing the evolution of a cluster as it ages.}
+    \label{fig:cmd-age-grid}
+\end{figure*}
+
+\subsubsection{Dependence on Filter Choice}
+
+The morphology of a synthetic CMD depends on the choice of photometric filters used to construct the color index and magnitude axis. Figure~\ref{fig:cmd-multifilter} compares CMDs generated from the same cluster snapshot using different filter combinations.
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=1\linewidth]{science-images/fig_cmd_multifilter_comparison.png}
+    \caption{Synthetic CMDs for a single cluster snapshot constructed using different JWST filter combinations. Each panel shows the same underlying stellar population projected into a different color--magnitude space. While the overall pre--main-sequence structure is preserved, the slope, curvature, and separation of stellar sequences vary with filter choice.}
+    \label{fig:cmd-multifilter}
+\end{figure*}
+
+Although all filter combinations trace the same underlying stellar population, the appearance of the CMD varies significantly. Differences in wavelength coverage alter the sensitivity of the color index to temperature and extinction, producing changes in the slope and curvature of the pre--main-sequence locus. Some filter combinations produce tighter, more linear sequences, while others emphasize curvature or broaden the distribution in color.
+
+These differences have important implications for interpreting observed CMDs. In particular, the apparent magnitude spread and separation of stellar sequences depend not only on the intrinsic cluster properties, but also on the specific photometric bands used in the observation. This highlights the importance of carefully selecting filter combinations when attempting to infer physical properties from CMD morphology.
+
+\subsubsection{Comparison to Physical Parameter Space}
+
+While CMDs represent the observable projection of stellar populations, it is useful to compare them directly to their representation in physical parameter space. Figure~\ref{fig:cmd-vs-hrd} shows the same cluster snapshot plotted both as a CMD and as a Hertzsprung--Russell (H--R) diagram.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{science-images/fig_cmd_vs_hrd_comparison.png}
+    \caption{Comparison between observational and physical representations of the same stellar population. The left panel shows a CMD constructed from JWST filters, while the right panel shows the corresponding H--R diagram in $(\log T_{\mathrm{eff}}, \log L)$.}
+    \label{fig:cmd-vs-hrd}
+\end{figure}
+
+In the H--R diagram, the stellar population follows a relatively tight, monotonic sequence that directly reflects stellar structure and evolution. In contrast, the CMD introduces additional curvature and dispersion due to the nonlinear mapping between physical parameters and photometric magnitudes. Effects such as filter response functions and color indices distort the underlying structure, producing features that are not present in the physical parameter space.
+
+This comparison emphasizes that CMD morphology is an indirect representation of stellar properties. Observable features such as magnitude spread and sequence curvature arise from a combination of intrinsic stellar evolution and the projection into photometric space. As a result, interpreting CMDs requires careful consideration of how these transformations affect the observed distribution of stars.
+
+\subsubsection{Magnitude Spread as a Proxy for Age Spread}
+
+The CMD morphology described above suggests that the vertical spread of stars in magnitude may provide a useful diagnostic of the cluster age distribution. In particular, a broader range of stellar ages should translate into a larger dispersion in magnitude at fixed color, as stars of different ages occupy slightly different locations along the pre–main-sequence isochrones.
+
+To quantify this effect, we define a metric for the magnitude spread of the CMD. Stars are first restricted to a region of the CMD where the sequence is well defined and sufficiently populated. Following an approach similar to that of \cite{Masegian2021}, who define temperature bins when measuring luminosity spread, we divide this region into bins in color and compute the standard deviation of the magnitude distribution within each bin. To avoid contamination from portions of the isochrone where the CMD becomes multi-valued in color, we restrict the analysis to a bounded region in magnitude that focuses on the intermediate mass range. The overall magnitude spread is then defined as the mean of the standard deviations across all populated color bins. This procedure provides a measure of the vertical dispersion of the CMD while reducing sensitivity to the slope of the isochrone sequence.
+
+Despite these precautions, defining a fixed bounding region in color–magnitude space becomes problematic at later cluster ages. As the cluster evolves, the isochrone curves become increasingly elongated along the magnitude axis, introducing a systematic scaling between cluster age and the measured magnitude spread. In addition, the isochrone grid itself gradually shifts toward fainter magnitudes and redder colors as pre–main-sequence stars evolve. Consequently, a fixed bounding region eventually fails to encompass the relevant portion of the CMD, reducing the reliability of the metric when comparing clusters with large differences in age. While one could allow the bounding region to evolve with the isochrone locus, such a co-moving definition complicates quantitative comparisons between clusters at different evolutionary stages.
+
+The relationship between cluster age and the intrinsic spread of stellar ages in the simulation is shown in Figure~\ref{fig:age-spread-vs-time}. As the cluster evolves, the range of stellar ages increases due to ongoing star formation within the molecular cloud. The age spread eventually saturates as star formation declines and the stellar population approaches a steady state.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{science-images/fig_age_spread_vs_time.png}
+    \caption{Evolution of stellar age spread as a function of cluster time for each freefall timescale at a cloud density of $0.1\,g\,cm^{-3}$. The age spread increases with cluster time before plateauing as star formation declines.}
+    \label{fig:age-spread-vs-time}
+\end{figure}
+
+Figure~\ref{fig:mag-spread-vs-time} shows the evolution of the measured magnitude spread as a function of cluster age. Although the general trend follows the growth of the stellar age distribution, the curves deviate from a strictly monotonic behavior. This deviation arises from the limitations of the geometric metric described above, as the shape and location of the isochrones evolve with cluster age.
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=1\linewidth]{science-images/fig_mag_spread_vs_time.png}
+    \caption{Magnitude spread as a function of cluster time for simulations spanning a range of cloud densities and freefall efficiencies. Deviations from a monotonic increase arise from geometric changes in the CMD sequence as the isochrone grid evolves.}
+    \label{fig:mag-spread-vs-time}
+\end{figure*}
+
+The direct relationship between magnitude spread and stellar age spread is illustrated in Figure~\ref{fig:mag-spread-vs-age}. Each point corresponds to a simulation snapshot, with the horizontal axis showing the intrinsic age spread of the stellar population and the vertical axis showing the measured CMD magnitude spread. The approximately monotonic trend indicates that the vertical dispersion of the CMD can serve as a proxy for the age distribution of the cluster population.
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=0.75\linewidth]{science-images/fig_mag_spread_vs_age_spread.png}
+    \caption{Magnitude spread as a function of stellar age spread for simulated clusters. Each point represents a cluster snapshot. The elongation of the tracks reflects differences in star formation histories associated with varying freefall efficiencies.}
+    \label{fig:mag-spread-vs-age}
+\end{figure*}
+
+Finally, the dependence of magnitude spread on the freefall efficiency parameter $\epsilon_{\rm ff}$ is shown in Figure~\ref{fig:mag-spread-eff}. The freefall timescale controls the rate of star formation within the molecular cloud and therefore influences the resulting age distribution of the stellar population. Lower values of $\epsilon_{\rm ff}$ correspond to more extended star formation histories and consequently larger age spreads, producing a broader distribution of magnitudes in the CMD.
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=1\linewidth]{science-images/fig_mag_spread_vs_eff.png}
+    \caption{Average magnitude spread as a function of freefall efficiency $\epsilon_{\rm ff}$ at a cluster age of 2 Myr. Larger spreads are associated with lower cloud densities, longer freefall timescales, and scenarios in which binary systems are treated as unresolved.}
+    \label{fig:mag-spread-eff}
+\end{figure*}
+
+Together, these results demonstrate that the vertical dispersion of the CMD encodes information about the star formation history of the cluster. In particular, the magnitude spread provides a measurable quantity that can be related to the underlying age distribution of the stellar population. This relationship forms the basis for the reverse modeling approach described in the following section, in which observed CMDs are used to infer properties of the molecular cloud from which the cluster formed.
+
+
+
+
+
+\section{Conclusion} \label{sec:conclusion}
+placeholder conclusion
+
+%% IMPORTANT! The old "\acknowledgment" command has be depreciated. It was
+%% not robust enough to handle our new dual anonymous review requirements and
+%% thus been replaced with the acknowledgment environment. If you try to 
+%% compile with \acknowledgment you will get an error print to the screen
+%% and in the compiled pdf.
+%% 
+%% Also note that the akcnowlodgment environment does not support long amounts of text. If you have a lot of people and institutions to acknowledge, do not use this command. Instead, create a new \section{Acknowledgments}.
+\begin{acknowledgments}
+
+\end{acknowledgments}
+
+%% To help institutions obtain information on the effectiveness of their 
+%% telescopes the AAS Journals has created a group of keywords for telescope 
+%% facilities.
+%
+%% Following the acknowledgments section, use the following syntax and the
+%% \facility{} or \facilities{} macros to list the keywords of facilities used 
+%% in the research for the paper.  Each keyword is check against the master 
+%% list during copy editing.  Individual instruments can be provided in 
+%% parentheses, after the keyword, but they are not verified.
+
+\software{astropy \citep{2013A&A...558A..33A,2018AJ....156..123A}
+          }
+
+%% Appendix material should be preceded with a single \appendix command.
+%% There should be a \section command for each appendix. Mark appendix
+%% subsections with the same markup you use in the main body of the paper.
+
+%% Each Appendix (indicated with \section) will be lettered A, B, C, etc.
+%% The equation counter will reset when it encounters the \appendix
+%% command and will number appendix equations (A1), (A2), etc. The
+%% Figure and Table counter will not reset.
+
+\appendix
+
+\section{Appendix information}
+
+Appendices can be broken into separate sections just like in the main text.
+The only difference is that each appendix section is indexed by a letter
+(A, B, C, etc.) instead of a number.  Likewise numbered equations have
+the section letter appended.  Here is an equation as an example.
+\begin{equation}
+I = \frac{1}{1 + d_{1}^{P (1 + d_{2} )}}
+\end{equation}
+Appendix tables and figures should not be numbered like equations. Instead
+they should continue the sequence from the main article body.
+
+%% For this sample we use BibTeX plus aasjournals.bst to generate the
+%% the bibliography. The sample631.bib file was populated from ADS. To
+%% get the citations to show in the compiled file do the following:
+%%
+%% pdflatex sample631.tex
+%% bibtext sample631
+%% pdflatex sample631.tex
+%% pdflatex sample631.tex
+
+\bibliography{sources}{}
+\bibliographystyle{aasjournal}
+
+%% This command is needed to show the entire author+affiliation list when
+%% the collaboration and author truncation commands are used.  It has to
+%% go at the end of the manuscript.
+%\allauthors
+
+%% Include this line if you are using the \added, \replaced, \deleted
+%% commands to see a summary list of all changes at the end of the article.
+%\listofchanges
+
+\end{document}
+
+% End of file `sample631.tex'.
