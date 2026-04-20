@@ -298,30 +298,82 @@ placeholder abstract
 \section{Introduction} \label{sec:intro}
 placeholder intro
 
-\section{Related Works}\label{sec:related}
+\section{Related Work}\label{sec:related}
 The formation and early evolution of star clusters have been explored extensively through numerical simulations that couple gravitational dynamics with prescriptions for star formation. In particular, \citet{Farias2019} present Nbody6 simulations of protoclusters forming within collapsing molecular clouds, demonstrating that the cloud surface density and star formation efficiency per freefall time ($\epsilon_{\mathrm{ff}}$) regulate both the duration of star formation and the resulting stellar age spread. These simulations provide a physically motivated link between cloud-scale properties and observable stellar populations.
 
 Synthetic diagram modeling has previously been used to connect such simulations to observable parameter spaces. \citet{Masegian2021} generated synthetic Hertzsprung–Russell (H–R) diagrams by interpolating stellar masses and ages from cluster simulations onto theoretical isochrones, quantifying the relationship between age spread and luminosity dispersion. That work established that luminosity spread in H–R space is positively correlated with the underlying stellar age spread induced by extended star formation histories.
 
 Extending this approach into observable photometric space, \citet{Zhang2024} implemented a forward-modeling framework that combined Nbody6 simulation outputs with synthetic photometry from SPISEA \citep{Hosek2020} to generate color–magnitude diagrams (CMDs) of forming protoclusters. That study demonstrated that magnitude spread in CMD space similarly traces stellar age spread and therefore encodes information about the parent cloud’s collapse timescale and density.
 
-While these prior works established the forward relationship between cloud physics, age spread, and diagram morphology, they did not address the inverse problem: recovering stellar and cloud parameters directly from multi-filter photometric observations. The present study builds upon these forward-modeling foundations by introducing a statistical reverse-modeling framework based on $\chi^2$ minimization to infer stellar masses, extinction, and cluster formation parameters from synthetic CMDs. This extension enables quantitative evaluation of how well observable photometric data can constrain the physical conditions of cluster formation.
+Together, these prior works establish a forward relationship between cloud physics, stellar age spread, and diagram morphology. The present study builds upon these foundations by further developing the synthetic CMD framework, examining its behavior across multiple photometric representations, and quantifying how CMD morphology reflects the underlying star formation history of a protocluster.
 
+\section{Methods} \label{sec:methods}
 
+We develop a forward-modeling framework that links protocluster formation simulations to observable color--magnitude diagrams (CMDs). The methodology combines numerical cluster simulations with synthetic photometry in order to map stellar masses and ages into observable photometric space and to analyze how cluster formation physics manifests in CMD morphology.
 
+The forward-modeling pipeline combines protocluster simulations from \citet{Farias2019} with synthetic photometry generated using SPISEA \citep{Hosek2020}. Stellar masses and ages extracted from Nbody6 simulations are interpolated onto a grid of theoretical isochrones to construct synthetic CMDs.
 
+\subsection{Protocluster Simulations}
 
+We utilize Nbody6 simulations presented in \citet{Farias2019}, which model the gradual formation of embedded clusters within collapsing molecular clouds. These simulations adopt a Kroupa initial mass function and include primordial binary systems. The primary cloud-scale parameters explored are the cloud surface density $\Sigma_{\rm cloud}$ and the star formation efficiency per freefall time $\epsilon_{\rm ff}$. Variations in these parameters regulate the duration of star formation and therefore the resulting stellar age spread.
 
+For a given cluster time $t_{\rm cl}$, stellar masses and ages are extracted from simulation snapshots and stored as arrays for subsequent photometric interpolation.
 
+\subsection{Isochrone Grid Construction}
 
+Synthetic photometry is generated using SPISEA \citep{Hosek2020}. For a specified set of stellar evolution models, metallicity, distance, extinction, and photometric filters, SPISEA produces isochrones containing stellar magnitudes as a function of mass at fixed age.
 
+To model clusters with intrinsic age spreads, we generate an isochrone grid spanning the minimum and maximum stellar ages present in the simulation snapshot. Ages are sampled at uniform intervals chosen to balance interpolation accuracy and computational cost. The resulting grid of isochrones provides discrete age tracks for photometric interpolation.
 
+\subsection{Photometric Interpolation}
 
+For each simulated star with mass $m$ and age $a$, photometric magnitudes are obtained via two-step interpolation:
+
+\begin{enumerate}
+    \item Identify the pair of isochrones whose ages bracket $a$.
+    \item Perform linear interpolation in mass along each isochrone to obtain photometric magnitudes at mass $m$.
+    \item Interpolate linearly in age between the two bracketing isochrone points to obtain magnitudes corresponding to $(m, a)$.
+\end{enumerate}
+
+This procedure yields synthetic magnitudes in the chosen filter set for every star in the simulation snapshot.
+
+\subsection{Treatment of Binary Systems}
+
+The Nbody6 simulations include primordial binary systems. Binary stars are modeled in two limiting observational cases:
+
+\paragraph{Resolved binaries:}
+Primary and companion stars are treated as independent sources and are interpolated separately.
+
+\paragraph{Unresolved binaries:}
+The fluxes of primary and companion stars are summed prior to conversion back into magnitudes:
+\[
+F_{\rm binary} = F_1 + F_2, \quad
+m_{\rm binary} = -2.5 \log_{10}\left(\frac{F_{\rm binary}}{F_0}\right),
+\]
+where $F_0$ is the filter-dependent zero-point flux. Unresolved binaries therefore appear systematically brighter than single stars of the same primary mass, producing a binary sequence offset in CMD space.
+
+\subsection{Synthetic CMD Construction}
+
+Color indices are constructed from differences of interpolated magnitudes in selected filter pairs. Synthetic CMDs are generated by plotting apparent magnitude versus color index for the full stellar population. These diagrams encode the effects of age spread, binary fraction, and cloud formation parameters on observable morphology.
+
+\subsection{CMD Morphology Quantification}
+
+To quantify vertical dispersion in CMD space, we define a magnitude-spread metric as follows:
+
+\begin{enumerate}
+    \item Define a bounding region in color--magnitude space that avoids regions where isochrones exhibit strong curvature.
+    \item Divide the region into bins in color.
+    \item Compute the standard deviation in magnitude within each bin.
+    \item Average the standard deviations across bins to obtain a global magnitude-spread metric.
+\end{enumerate}
+
+Age spread is quantified as the difference between the 95th and 5th percentile stellar ages in each simulation snapshot. This metric allows direct comparison between intrinsic age spread and observable magnitude dispersion.
 
 \section{Results \& Analysis} \label{sec:results}
 
-\subsection{Forward Modeling}
-The forward modeling pipeline produces synthetic color–magnitude diagrams (CMDs) from simulated protocluster populations by mapping stellar masses and ages onto photometric magnitudes through a grid of theoretical isochrones. In this section we demonstrate the construction of the CMDs and illustrate how cluster evolution and binary populations affect the resulting morphology.
+The forward-modeling framework produces synthetic color–magnitude diagrams (CMDs) from simulated protocluster populations by mapping stellar masses and ages onto photometric magnitudes through a grid of theoretical isochrones. In this section we demonstrate the construction of the CMDs and illustrate how cluster evolution, binarity, filter choice, and age spread affect the resulting morphology.
+
+\subsection{Synthetic CMD Construction}
 
 \subsubsection{Isochrone Grid Interpolation}
 The interpolation framework relies on a dense grid of stellar isochrones spanning a range of ages relevant to young star-forming regions. Figure~\ref{fig:iso-grid} shows an example grid generated using the SPISEA stellar population synthesis package. Each curve represents the photometric locus of stars with different masses at a fixed age. Younger isochrones generally appear brighter at a given color due to the higher luminosities of pre–main-sequence stars. By sampling a sufficiently fine age grid, it becomes possible to estimate the photometric properties of stars whose ages fall between discrete isochrone models.
@@ -357,15 +409,14 @@ Binary systems introduce an additional observational effect that must be conside
 \begin{figure*}
     \centering
     \includegraphics[width=1\linewidth]{science-images/fig_cmd_binaries_f162m_f182m.png}
-    \caption{Example CMDs demonstrating the difference between treating binary systems as resolve and unresolved.}
+    \caption{Example CMDs demonstrating the difference between treating binary systems as resolved and unresolved.}
     \label{fig:cmd-binaries}
 \end{figure*}
-
 
 \subsubsection{Age evolution in the CMD}
 The morphology of the CMD evolves as the cluster ages. Figure~\ref{fig:cmd-age-grid} shows the synthetic CMD at several cluster ages while holding the cloud density and freefall efficiency fixed. At earlier times, the stellar population occupies brighter magnitudes due to the elevated luminosities of young pre–main-sequence stars. As the cluster evolves, stars gradually move toward fainter magnitudes and the CMD sequence becomes more tightly clustered around the underlying isochrone tracks. The apparent spread in magnitude therefore depends not only on observational effects such as unresolved binaries, but also on the intrinsic age distribution produced by the star formation history of the molecular cloud.
 
-These results demonstrate that the forward modeling framework successfully translates simulated cluster populations into synthetic CMDs whose morphology reflects both stellar evolution and cluster formation physics. In the following analysis, these synthetic CMDs provide the basis for exploring how variations in the physical properties of the progenitor molecular cloud influence observable features of young star clusters.
+These results demonstrate that the forward-modeling framework successfully translates simulated cluster populations into synthetic CMDs whose morphology reflects both stellar evolution and cluster formation physics.
 
 \begin{figure*}
     \centering
@@ -374,6 +425,8 @@ These results demonstrate that the forward modeling framework successfully trans
     \label{fig:cmd-age-grid}
 \end{figure*}
 
+\subsection{Comparison Across Diagram Spaces}
+
 \subsubsection{Dependence on Filter Choice}
 
 The morphology of a synthetic CMD depends on the choice of photometric filters used to construct the color index and magnitude axis. Figure~\ref{fig:cmd-multifilter} compares CMDs generated from the same cluster snapshot using different filter combinations.
@@ -381,30 +434,26 @@ The morphology of a synthetic CMD depends on the choice of photometric filters u
 \begin{figure*}
     \centering
     \includegraphics[width=1\linewidth]{science-images/fig_cmd_multifilter_comparison.png}
-    \caption{Synthetic CMDs for a single cluster snapshot constructed using different JWST filter combinations. Each panel shows the same underlying stellar population projected into a different color--magnitude space. While the overall pre--main-sequence structure is preserved, the slope, curvature, and separation of stellar sequences vary with filter choice.}
+    \caption{Synthetic CMDs for a single cluster snapshot constructed using different JWST filter combinations. Each panel shows the same underlying stellar population projected into a different color--magnitude space.}
     \label{fig:cmd-multifilter}
 \end{figure*}
 
-Although all filter combinations trace the same underlying stellar population, the appearance of the CMD varies significantly. Differences in wavelength coverage alter the sensitivity of the color index to temperature and extinction, producing changes in the slope and curvature of the pre--main-sequence locus. Some filter combinations produce tighter, more linear sequences, while others emphasize curvature or broaden the distribution in color.
+Although all filter combinations trace the same underlying stellar population, the appearance of the CMD varies significantly. Differences in wavelength coverage alter the sensitivity of the color index to temperature and extinction, producing changes in the slope and curvature of the pre--main-sequence locus. Some filter combinations produce tighter, more linear sequences, while others emphasize curvature or broaden the distribution in color. These differences have important implications for interpreting observed CMDs, since the apparent magnitude spread and separation of stellar sequences depend not only on the intrinsic cluster properties, but also on the specific photometric bands used in the observation.
 
-These differences have important implications for interpreting observed CMDs. In particular, the apparent magnitude spread and separation of stellar sequences depend not only on the intrinsic cluster properties, but also on the specific photometric bands used in the observation. This highlights the importance of carefully selecting filter combinations when attempting to infer physical properties from CMD morphology.
-
-\subsubsection{Comparison to Physical Parameter Space}
+\subsubsection{Comparison to physical parameter space}
 
 While CMDs represent the observable projection of stellar populations, it is useful to compare them directly to their representation in physical parameter space. Figure~\ref{fig:cmd-vs-hrd} shows the same cluster snapshot plotted both as a CMD and as a Hertzsprung--Russell (H--R) diagram.
 
 \begin{figure}
     \centering
     \includegraphics[width=1\linewidth]{science-images/fig_cmd_vs_hrd_comparison.png}
-    \caption{Comparison between observational and physical representations of the same stellar population. The left panel shows a CMD constructed from JWST filters, while the right panel shows the corresponding H--R diagram in $(\log T_{\mathrm{eff}}, \log L)$.}
+    \caption{Comparison between observational and physical representations of the same stellar population.}
     \label{fig:cmd-vs-hrd}
 \end{figure}
 
-In the H--R diagram, the stellar population follows a relatively tight, monotonic sequence that directly reflects stellar structure and evolution. In contrast, the CMD introduces additional curvature and dispersion due to the nonlinear mapping between physical parameters and photometric magnitudes. Effects such as filter response functions and color indices distort the underlying structure, producing features that are not present in the physical parameter space.
+In the H--R diagram, the stellar population follows a relatively tight, monotonic sequence that directly reflects stellar structure and evolution. In contrast, the CMD introduces additional curvature and dispersion due to the nonlinear mapping between physical parameters and photometric magnitudes. This comparison emphasizes that CMD morphology is an indirect representation of stellar properties. Observable features such as magnitude spread and sequence curvature arise from a combination of intrinsic stellar evolution and the projection into photometric space.
 
-This comparison emphasizes that CMD morphology is an indirect representation of stellar properties. Observable features such as magnitude spread and sequence curvature arise from a combination of intrinsic stellar evolution and the projection into photometric space. As a result, interpreting CMDs requires careful consideration of how these transformations affect the observed distribution of stars.
-
-\subsubsection{Magnitude Spread as a Proxy for Age Spread}
+\subsection{Magnitude Spread as a Proxy for Age Spread}
 
 The CMD morphology described above suggests that the vertical spread of stars in magnitude may provide a useful diagnostic of the cluster age distribution. In particular, a broader range of stellar ages should translate into a larger dispersion in magnitude at fixed color, as stars of different ages occupy slightly different locations along the pre–main-sequence isochrones.
 
@@ -448,8 +497,7 @@ Finally, the dependence of magnitude spread on the freefall efficiency parameter
     \label{fig:mag-spread-eff}
 \end{figure*}
 
-Together, these results demonstrate that the vertical dispersion of the CMD encodes information about the star formation history of the cluster. In particular, the magnitude spread provides a measurable quantity that can be related to the underlying age distribution of the stellar population. This relationship forms the basis for the reverse modeling approach described in the following section, in which observed CMDs are used to infer properties of the molecular cloud from which the cluster formed.
-
+Together, these results demonstrate that the vertical dispersion of the CMD encodes information about the star formation history of the cluster. In particular, the magnitude spread provides a measurable quantity that can be related to the underlying age distribution of the stellar population.
 
 
 
