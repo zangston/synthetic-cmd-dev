@@ -1,0 +1,37 @@
+Stepwise fitting outputs
+Input dat: /scratch/wyz5rge/synthetic-hr/data/phot_joined_avmass.dat
+dist=4500.0 metallicity=0.0 log_age=6.0
+Global mass xlim: (0.0091323, 1.444619)
+Global AV xlim: (0.0, 51.8712)
+Superset iso cache: isochrones_stepwise_av70_cmd162/superset_jwst_hst_all6_cache
+
+jwst_cmd_F162MminusF182M_vs_F162M:
+  CSV:   results_stepwise_av70_cmd162/jwst_cmd_F162MminusF182M_vs_F162M/fit_results_jwst_cmd_F162MminusF182M_vs_F162M.csv
+  Truth: results_stepwise_av70_cmd162/jwst_cmd_F162MminusF182M_vs_F162M/fit_results_jwst_cmd_F162MminusF182M_vs_F162M_with_truth.csv
+  Log:   results_stepwise_av70_cmd162/jwst_cmd_F162MminusF182M_vs_F162M/jwst_cmd_F162MminusF182M_vs_F162M.log
+  Plots: results_stepwise_av70_cmd162/jwst_cmd_F162MminusF182M_vs_F162M
+
+jwst_mags_F162M_F182M:
+  CSV:   results_stepwise_av70_cmd162/jwst_mags_F162M_F182M/fit_results_jwst_mags_F162M_F182M.csv
+  Truth: results_stepwise_av70_cmd162/jwst_mags_F162M_F182M/fit_results_jwst_mags_F162M_F182M_with_truth.csv
+  Log:   results_stepwise_av70_cmd162/jwst_mags_F162M_F182M/jwst_mags_F162M_F182M.log
+  Plots: results_stepwise_av70_cmd162/jwst_mags_F162M_F182M
+
+jwst_mags_F162M_F182M_F200W:
+  CSV:   results_stepwise_av70_cmd162/jwst_mags_F162M_F182M_F200W/fit_results_jwst_mags_F162M_F182M_F200W.csv
+  Truth: results_stepwise_av70_cmd162/jwst_mags_F162M_F182M_F200W/fit_results_jwst_mags_F162M_F182M_F200W_with_truth.csv
+  Log:   results_stepwise_av70_cmd162/jwst_mags_F162M_F182M_F200W/jwst_mags_F162M_F182M_F200W.log
+  Plots: results_stepwise_av70_cmd162/jwst_mags_F162M_F182M_F200W
+
+jwst_mags_all:
+  CSV:   results_stepwise_av70_cmd162/jwst_mags_all/fit_results_jwst_mags_all.csv
+  Truth: results_stepwise_av70_cmd162/jwst_mags_all/fit_results_jwst_mags_all_with_truth.csv
+  Log:   results_stepwise_av70_cmd162/jwst_mags_all/jwst_mags_all.log
+  Plots: results_stepwise_av70_cmd162/jwst_mags_all
+
+jwst_hst_mags_all:
+  CSV:   results_stepwise_av70_cmd162/jwst_hst_mags_all/fit_results_jwst_hst_mags_all.csv
+  Truth: results_stepwise_av70_cmd162/jwst_hst_mags_all/fit_results_jwst_hst_mags_all_with_truth.csv
+  Log:   results_stepwise_av70_cmd162/jwst_hst_mags_all/jwst_hst_mags_all.log
+  Plots: results_stepwise_av70_cmd162/jwst_hst_mags_all
+
