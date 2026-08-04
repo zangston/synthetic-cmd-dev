@@ -4,6 +4,7 @@ __pycache__/
 isochrones/
 isochrones*
 
+.csv
 *.fits
 *.dat
 
