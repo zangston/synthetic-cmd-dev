@@ -7,5 +7,6 @@ isochrones*
 *.csv
 *.fits
 *.dat
+*.json
 
 *.log
