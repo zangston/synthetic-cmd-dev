@@ -169,7 +169,7 @@
 
 \begin{document}
 
-\title{Deducing the Physical Characteristics of Cloud Collapse via Forward and Reverse-Modeling of Protoclusters}
+\title{Color-Magnitude and Hertzsprung-Russell Diagram Morphology of Simulated Star Cluster Formation}
 
 %% LaTeX will automatically break titles if they run longer than
 %% one line. However, you may use \\ to force a line break if
@@ -298,6 +298,10 @@ placeholder abstract
 \section{Introduction} \label{sec:intro}
 placeholder intro
 
+
+
+
+
 \section{Related Work}\label{sec:related}
 The formation and early evolution of star clusters have been explored extensively through numerical simulations that couple gravitational dynamics with prescriptions for star formation. In particular, \citet{Farias2019} present Nbody6 simulations of protoclusters forming within collapsing molecular clouds, demonstrating that the cloud surface density and star formation efficiency per freefall time ($\epsilon_{\mathrm{ff}}$) regulate both the duration of star formation and the resulting stellar age spread. These simulations provide a physically motivated link between cloud-scale properties and observable stellar populations.
 
@@ -315,9 +319,52 @@ The forward-modeling pipeline combines protocluster simulations from \citet{Fari
 
 \subsection{Protocluster Simulations}
 
-We utilize Nbody6 simulations presented in \citet{Farias2019}, which model the gradual formation of embedded clusters within collapsing molecular clouds. These simulations adopt a Kroupa initial mass function and include primordial binary systems. The primary cloud-scale parameters explored are the cloud surface density $\Sigma_{\rm cloud}$ and the star formation efficiency per freefall time $\epsilon_{\rm ff}$. Variations in these parameters regulate the duration of star formation and therefore the resulting stellar age spread.
+We utilize Nbody6 simulations presented in \citet{Farias2019}, which model the gradual formation of embedded clusters within collapsing molecular clouds. The present analysis is restricted to the simulation suite with an initial clump mass of $M_{\rm cl}=3000\,M_\odot$. These simulations adopt a Kroupa initial mass function and include primordial binary systems. The primary cloud-scale parameters explored are the cloud surface density $\Sigma_{\rm cloud}$ and the star formation efficiency per freefall time $\epsilon_{\rm ff}$. Variations in these parameters regulate the duration of star formation and therefore the resulting stellar age spread.
 
 For a given cluster time $t_{\rm cl}$, stellar masses and ages are extracted from simulation snapshots and stored as arrays for subsequent photometric interpolation.
+
+\subsection{Simulation Parameter Grid}
+\label{sec:simulation-grid}
+
+For the adopted initial clump mass of $M_{\rm cl}=3000\,M_\odot$, the simulation suite spans two cloud surface densities,
+\begin{equation}
+\Sigma_{\rm cloud} = 0.1,\ 1.0\ {\rm g\,cm^{-2}},
+\end{equation}
+and five values of the star formation efficiency per freefall time,
+\begin{equation}
+\epsilon_{\rm ff}
+=
+0.01,\ 0.03,\ 0.10,\ 0.30,\ 1.00.
+\end{equation}
+Each combination of $\Sigma_{\rm cloud}$ and $\epsilon_{\rm ff}$ is represented by 20 realizations identified by two-digit seed numbers, yielding a total of 200 simulations.
+
+For a given cloud surface density, corresponding seed numbers across the different values of $\epsilon_{\rm ff}$ contain the same underlying set of stellar masses sampled from the initial mass function. For the same seed, changing $\epsilon_{\rm ff}$ therefore changes the times at which those stars are introduced into the simulation rather than changing the sampled stellar population itself. This permits controlled, seed-by-seed comparisons of the effect of the star-formation history.
+
+For a fixed parameter combination $(M_{\rm cl},\Sigma_{\rm cloud},\epsilon_{\rm ff})$, averaging over the 20 realizations helps to smooth variations caused by stochastic sampling of the stellar initial mass function. We therefore use same-seed comparisons when isolating the effect of $\epsilon_{\rm ff}$ and ensemble averages when characterizing the mean behavior of a given parameter combination.
+
+\begin{deluxetable}{ccc}
+\tablecaption{$3000\,M_\odot$ Protocluster Simulation Grid
+\label{tab:simulation-grid}}
+\tablehead{
+\colhead{$\Sigma_{\rm cloud}$ (${\rm g\,cm^{-2}}$)} &
+\colhead{$\epsilon_{\rm ff}$} &
+\colhead{Number of realizations}
+}
+\startdata
+0.1 & 0.01 & 20 \\
+0.1 & 0.03 & 20 \\
+0.1 & 0.10 & 20 \\
+0.1 & 0.30 & 20 \\
+0.1 & 1.00 & 20 \\
+1.0 & 0.01 & 20 \\
+1.0 & 0.03 & 20 \\
+1.0 & 0.10 & 20 \\
+1.0 & 0.30 & 20 \\
+1.0 & 1.00 & 20 \\
+\enddata
+\end{deluxetable}
+
+All results presented in this work are based on the $M_{\rm cl}=3000\,M_\odot$ simulations. Dependence on initial clump mass is reserved for future analysis.
 
 \subsection{Isochrone Grid Construction}
 
@@ -327,7 +374,7 @@ To model clusters with intrinsic age spreads, we generate an isochrone grid span
 
 \subsection{Photometric Interpolation}
 
-For each simulated star with mass $m$ and age $a$, photometric magnitudes are obtained via two-step interpolation:
+For each simulated star with mass $m$ and age $a$, photometric magnitudes are obtained via bilinear interpolation, first in mass and then in age, according to the following steps:
 
 \begin{enumerate}
     \item Identify the pair of isochrones whose ages bracket $a$.
@@ -356,19 +403,43 @@ where $F_0$ is the filter-dependent zero-point flux. Unresolved binaries therefo
 
 Color indices are constructed from differences of interpolated magnitudes in selected filter pairs. Synthetic CMDs are generated by plotting apparent magnitude versus color index for the full stellar population. These diagrams encode the effects of age spread, binary fraction, and cloud formation parameters on observable morphology.
 
-\subsection{CMD Morphology Quantification}
+\subsection{Diagram Morphology Quantification}
+\label{sec:spread-metric}
 
-To quantify vertical dispersion in CMD space, we define a magnitude-spread metric as follows:
+We quantify the vertical extent of the simulated stellar population using a statistic based on the separation between the bright and faint portions of the distribution. This approach follows the luminosity-spread analysis of \citet{Masegian2021}, adapted here for use in color--magnitude space.
 
-\begin{enumerate}
-    \item Define a bounding region in color--magnitude space that avoids regions where isochrones exhibit strong curvature.
-    \item Divide the region into bins in color.
-    \item Compute the standard deviation in magnitude within each bin.
-    \item Average the standard deviations across bins to obtain a global magnitude-spread metric.
-\end{enumerate}
+The selected region of the diagram is divided into six bins along the horizontal coordinate. In an H--R diagram, these are bins in effective temperature. In a CMD, the bins may be defined directly in color or obtained by mapping a selected effective-temperature interval onto the corresponding isochrone locus. For each bin $j$, we calculate the mean magnitude of the brightest quartile and the mean magnitude of the faintest quartile. The spread in that bin is
 
-Age spread is quantified as the difference between the 95th and 5th percentile stellar ages in each simulation snapshot. This metric allows direct comparison between intrinsic age spread and observable magnitude dispersion.
+\begin{equation}
+S_{m,j}
+=
+\left\langle m \right\rangle_{{\rm faint},j}
+-
+\left\langle m \right\rangle_{{\rm bright},j},
+\end{equation}
 
+where larger magnitudes correspond to fainter sources. The overall magnitude-spread statistic is then
+
+\begin{equation}
+S_m
+=
+\frac{1}{N_{\rm bin}}
+\sum_{j=1}^{N_{\rm bin}} S_{m,j},
+\end{equation}
+
+where $N_{\rm bin}$ is the number of sufficiently populated bins included in the calculation. Bins containing fewer than the adopted minimum number of stars are excluded.
+
+This statistic measures the separation between the upper and lower portions of the stellar sequence while reducing sensitivity to individual extreme points. It also avoids allowing the densely populated center of the distribution to dominate the spread measurement.
+
+The same geometric statistic does not perform equally well in every color--magnitude projection. Certain filter combinations produce isochrones that are strongly curved, locally multi-valued in color, or nearly parallel to the direction in which age broadens the stellar sequence. In these cases, horizontal binning can mix physically distinct regions of the isochrone or measure changes in track geometry rather than intrinsic age spread. We therefore evaluate the suitability of the spread statistic separately for each filter combination and explicitly identify CMD projections for which the inferred spread is unreliable.
+
+The intrinsic stellar age spread is quantified as
+
+\begin{equation}
+\Delta t_{90} = t_{95} - t_{5},
+\end{equation}
+
+where $t_{95}$ and $t_{5}$ are the 95th and 5th percentiles of the stellar-age distribution in a simulation snapshot. This definition suppresses sensitivity to a small number of extreme-age stars and permits direct comparison between the intrinsic age distribution and the measured diagram spread.
 \section{Results \& Analysis} \label{sec:results}
 
 The forward-modeling framework produces synthetic color–magnitude diagrams (CMDs) from simulated protocluster populations by mapping stellar masses and ages onto photometric magnitudes through a grid of theoretical isochrones. In this section we demonstrate the construction of the CMDs and illustrate how cluster evolution, binarity, filter choice, and age spread affect the resulting morphology.
@@ -425,6 +496,32 @@ These results demonstrate that the forward-modeling framework successfully trans
     \label{fig:cmd-age-grid}
 \end{figure*}
 
+\subsection{Generator Parameter Tests}
+\label{sec:generator-tests}
+
+SPISEA permits the synthetic-photometry calculation to be varied over a broad input parameter space, including the stellar-evolution model, stellar-atmosphere model, metallicity, distance, extinction law, extinction amplitude, and photometric filter set. The diagram generator retains this modularity by passing the selected model and observational parameters directly to the SPISEA isochrone constructor.
+
+To demonstrate the flexibility of the generator independently of changes in the underlying stellar population, we hold the Nbody6 simulation realization and cluster snapshot fixed while varying one photometric or stellar-model input at a time. Filter-combination tests project the same simulated stars into multiple color--magnitude spaces. Stellar-evolution-model tests similarly compare the same mass--age population using different sets of theoretical tracks, restricted to the mass and age ranges common to the models being compared.
+
+These comparisons are intended to demonstrate the range of diagrams that can be produced by the framework and to identify cases in which the morphology of the selected CMD affects the interpretation of stellar spread. They are distinct from the simulation-ensemble analysis, in which the photometric assumptions are held fixed while the cloud parameters and cluster realizations are varied.
+
+\subsection{Selection of Diagram Spaces for Ensemble Analysis}
+\label{sec:diagram-selection}
+
+The full simulation ensemble is not evaluated in every available photometric projection. Instead, the geometry of the isochrone grid is first examined across several candidate filter combinations. The preferred CMD projections are those for which the selected stellar sequence remains approximately single-valued in color, avoids strong curvature or self-overlap, and exhibits a measurable vertical separation with age.
+
+The principal candidate for the simulation-ensemble analysis is
+\begin{equation}
+(F182M-F200W)\ {\rm versus}\ F200W,
+\end{equation}
+whose isochrone geometry is favorable for the adopted spread statistic. The
+\begin{equation}
+(F162M-F182M)\ {\rm versus}\ F162M
+\end{equation}
+projection is retained as an observationally motivated comparison, while additional filter combinations are used to demonstrate the broader capabilities of the generator and to identify cases in which the spread statistic becomes unreliable.
+
+The ensemble analysis is also performed in H--R space using effective temperature and luminosity. Applying the same general morphology statistic in both theoretical and photometric spaces permits evaluation of how the transformation from physical stellar parameters to observed magnitudes affects the inferred relationship between diagram spread and stellar age spread. A subsequent comparison to an observed CMD will apply an analogous measurement procedure within the limits imposed by the available filters, completeness, and photometric uncertainties.
+
 \subsection{Comparison Across Diagram Spaces}
 
 \subsubsection{Dependence on Filter Choice}
@@ -444,34 +541,36 @@ Although all filter combinations trace the same underlying stellar population, t
 
 While CMDs represent the observable projection of stellar populations, it is useful to compare them directly to their representation in physical parameter space. Figure~\ref{fig:cmd-vs-hrd} shows the same cluster snapshot plotted both as a CMD and as a Hertzsprung--Russell (H--R) diagram.
 
-\begin{figure}
+\begin{figure*}
     \centering
     \includegraphics[width=1\linewidth]{science-images/fig_cmd_vs_hrd_comparison.png}
     \caption{Comparison between observational and physical representations of the same stellar population.}
     \label{fig:cmd-vs-hrd}
-\end{figure}
+\end{figure*}
 
 In the H--R diagram, the stellar population follows a relatively tight, monotonic sequence that directly reflects stellar structure and evolution. In contrast, the CMD introduces additional curvature and dispersion due to the nonlinear mapping between physical parameters and photometric magnitudes. This comparison emphasizes that CMD morphology is an indirect representation of stellar properties. Observable features such as magnitude spread and sequence curvature arise from a combination of intrinsic stellar evolution and the projection into photometric space.
 
 \subsection{Magnitude Spread as a Proxy for Age Spread}
 
-The CMD morphology described above suggests that the vertical spread of stars in magnitude may provide a useful diagnostic of the cluster age distribution. In particular, a broader range of stellar ages should translate into a larger dispersion in magnitude at fixed color, as stars of different ages occupy slightly different locations along the pre–main-sequence isochrones.
+The CMD morphology described above suggests that the vertical spread of stars in magnitude may provide a useful diagnostic of the cluster age distribution. In particular, a broader range of stellar ages should translate into a larger separation between the bright and faint portions of the stellar sequence, as stars of different ages occupy different locations along the pre--main-sequence isochrones.
 
-To quantify this effect, we define a metric for the magnitude spread of the CMD. Stars are first restricted to a region of the CMD where the sequence is well defined and sufficiently populated. Following an approach similar to that of \cite{Masegian2021}, who define temperature bins when measuring luminosity spread, we divide this region into bins in color and compute the standard deviation of the magnitude distribution within each bin. To avoid contamination from portions of the isochrone where the CMD becomes multi-valued in color, we restrict the analysis to a bounded region in magnitude that focuses on the intermediate mass range. The overall magnitude spread is then defined as the mean of the standard deviations across all populated color bins. This procedure provides a measure of the vertical dispersion of the CMD while reducing sensitivity to the slope of the isochrone sequence.
+We quantify this effect using the quartile-separation statistic defined in Section~\ref{sec:spread-metric}. Within each horizontal bin, the mean magnitude of the brightest quartile is subtracted from the mean magnitude of the faintest quartile, and the resulting differences are averaged across all sufficiently populated bins. This statistic is designed to measure the vertical extent of the stellar sequence while reducing sensitivity to individual outliers and to the concentration of stars near the center of the distribution.
 
 Despite these precautions, defining a fixed bounding region in color–magnitude space becomes problematic at later cluster ages. As the cluster evolves, the isochrone curves become increasingly elongated along the magnitude axis, introducing a systematic scaling between cluster age and the measured magnitude spread. In addition, the isochrone grid itself gradually shifts toward fainter magnitudes and redder colors as pre–main-sequence stars evolve. Consequently, a fixed bounding region eventually fails to encompass the relevant portion of the CMD, reducing the reliability of the metric when comparing clusters with large differences in age. While one could allow the bounding region to evolve with the isochrone locus, such a co-moving definition complicates quantitative comparisons between clusters at different evolutionary stages.
 
 The relationship between cluster age and the intrinsic spread of stellar ages in the simulation is shown in Figure~\ref{fig:age-spread-vs-time}. As the cluster evolves, the range of stellar ages increases due to ongoing star formation within the molecular cloud. The age spread eventually saturates as star formation declines and the stellar population approaches a steady state.
 
+% TODO: regenerate using quartile-separation metric and full 20-seed ensemble
 \begin{figure}
     \centering
     \includegraphics[width=1\linewidth]{science-images/fig_age_spread_vs_time.png}
-    \caption{Evolution of stellar age spread as a function of cluster time for each freefall timescale at a cloud density of $0.1\,g\,cm^{-3}$. The age spread increases with cluster time before plateauing as star formation declines.}
+    \caption{Evolution of stellar age spread as a function of cluster time for each freefall timescale at a cloud density of $0.1\,g\,cm^{-2}$. The age spread increases with cluster time before plateauing as star formation declines.}
     \label{fig:age-spread-vs-time}
 \end{figure}
 
 Figure~\ref{fig:mag-spread-vs-time} shows the evolution of the measured magnitude spread as a function of cluster age. Although the general trend follows the growth of the stellar age distribution, the curves deviate from a strictly monotonic behavior. This deviation arises from the limitations of the geometric metric described above, as the shape and location of the isochrones evolve with cluster age.
 
+% TODO: regenerate using quartile-separation metric and full 20-seed ensemble
 \begin{figure*}
     \centering
     \includegraphics[width=1\linewidth]{science-images/fig_mag_spread_vs_time.png}
@@ -481,6 +580,7 @@ Figure~\ref{fig:mag-spread-vs-time} shows the evolution of the measured magnitud
 
 The direct relationship between magnitude spread and stellar age spread is illustrated in Figure~\ref{fig:mag-spread-vs-age}. Each point corresponds to a simulation snapshot, with the horizontal axis showing the intrinsic age spread of the stellar population and the vertical axis showing the measured CMD magnitude spread. The approximately monotonic trend indicates that the vertical dispersion of the CMD can serve as a proxy for the age distribution of the cluster population.
 
+% TODO: regenerate using quartile-separation metric and full 20-seed ensemble
 \begin{figure*}
     \centering
     \includegraphics[width=0.75\linewidth]{science-images/fig_mag_spread_vs_age_spread.png}
@@ -490,6 +590,7 @@ The direct relationship between magnitude spread and stellar age spread is illus
 
 Finally, the dependence of magnitude spread on the freefall efficiency parameter $\epsilon_{\rm ff}$ is shown in Figure~\ref{fig:mag-spread-eff}. The freefall timescale controls the rate of star formation within the molecular cloud and therefore influences the resulting age distribution of the stellar population. Lower values of $\epsilon_{\rm ff}$ correspond to more extended star formation histories and consequently larger age spreads, producing a broader distribution of magnitudes in the CMD.
 
+% TODO: regenerate using quartile-separation metric and full 20-seed ensemble
 \begin{figure*}
     \centering
     \includegraphics[width=1\linewidth]{science-images/fig_mag_spread_vs_eff.png}
@@ -498,6 +599,7 @@ Finally, the dependence of magnitude spread on the freefall efficiency parameter
 \end{figure*}
 
 Together, these results demonstrate that the vertical dispersion of the CMD encodes information about the star formation history of the cluster. In particular, the magnitude spread provides a measurable quantity that can be related to the underlying age distribution of the stellar population.
+
 
 
 
