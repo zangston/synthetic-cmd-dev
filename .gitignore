@@ -10,3 +10,4 @@ isochrones*
 *.json
 
 *.log
+*.pid
