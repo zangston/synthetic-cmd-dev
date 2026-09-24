@@ -1,11 +1,33 @@
 # %% [markdown]
 # # Binary-resolution experiment: seed 00, epsilon_ff = 0.03
 #
-# Compares all-resolved vs all-unresolved binaries, then simulates JWST
-# resolution at 400 pc for XY/XZ/YZ sky-plane projections.
+# CMD-only analysis of binary angular resolution.  The H-R diagram is
+# deliberately excluded because it is an intrinsic physical diagram rather
+# than a wavelength-dependent imaging observable.
 #
-# Unresolved binaries are combined in FLUX in every filter before colors are
-# calculated.  Individual stars are still interpolated with interpolator.py.
+# Experiments:
+# - all current binaries resolved;
+# - all current binaries unresolved;
+# - line-of-sight resolution for XY, XZ, and YZ sky-plane projections.
+#
+# Current multiplicity is recomputed at every snapshot with
+# snapshot.resolve_set(snapshot.unresolved_stars, split_set=True), so binary
+# formation, disruption, exchanges, and orbital motion are all allowed.
+#
+# For each CMD, the angular-resolution criterion uses the LONGEST-wavelength
+# filter in that CMD and the correct telescope primary-mirror diameter:
+# - JWST F070W-F200W and F182M-F200W: F200W, D = 6.5 m;
+# - HST  F555W-F814W: F814W, D = 2.4 m.
+#
+# Rayleigh criterion:
+#     theta_R = 1.22 * lambda / D
+#
+# At the adopted cluster distance of 410 pc, a binary is unresolved in a
+# given projection when its instantaneous projected separation is <= the
+# physical separation corresponding to theta_R.
+#
+# Unresolved binaries are combined in FLUX independently in every filter
+# before CMD colors are calculated.
 
 # %%
 from __future__ import annotations
@@ -47,8 +69,9 @@ SIMULATION_PATH = Path(
     'sigma0p1/fiducial/sfe_ff003/00'
 )
 
-OUTPUT_DIR = Path.cwd() / 'binary_resolution_seed00_outputs'
-CACHE_DIR = Path.cwd() / 'binary_resolution_seed00_cache'
+# CMD-only binary-resolution products.
+OUTPUT_DIR = Path.cwd() / 'binary_resolution_seed00_cmd_outputs'
+CACHE_DIR = Path.cwd() / 'binary_resolution_seed00_cmd_cache'
 ISO_CACHE_DIR = Path.cwd() / 'iso_cache'
 
 RESET_ISO_CACHE = False
@@ -64,9 +87,12 @@ SEED = '00'
 
 USE_ROTATING_MERGED = False
 AKS = 0.0
-DISTANCE_PC = 410.0              # Orion-like photometric distance
-OBSERVING_DISTANCE_PC = 410.0    # Orion-like binary-resolution distance
-JWST_DIAMETER_M = 6.5
+
+# Use one consistent cluster distance for both SPISEA photometry and the
+# conversion of angular resolution into projected physical separation.
+DISTANCE_PC = 410.0
+OBSERVING_DISTANCE_PC = DISTANCE_PC
+
 RAYLEIGH_FACTOR = 1.22
 METALLICITY = 0.0
 ATM_FUNC = atmospheres.get_BTSettl_2015_atmosphere
@@ -80,7 +106,6 @@ DISPLAY_TIMES_MYR = np.array([1.0, 2.0, 3.0, 5.0, 7.5, 10.0, 15.0, 20.0])
 TEFF_MIN_K = 3000.0
 TEFF_MAX_K = 3600.0
 N_BINS = 6
-HR_TEFF_BIN_EDGES_K = np.linspace(TEFF_MIN_K, TEFF_MAX_K, N_BINS + 1)
 REFERENCE_BIN_AGE_MYR = 1.0
 MIN_STARS_PER_BIN = 8
 CLIP_YOUNG_TO_GRID = True
@@ -97,13 +122,20 @@ FILTER_OBSMODES = {
 }
 ALL_FILTERS = list(FILTER_OBSMODES.values())
 
-# Nominal wavelengths in microns for the angular-resolution experiment.
-FILTER_WAVELENGTH_UM = {
-    'F070W': 0.70,
-    'F182M': 1.82,
-    'F200W': 2.00,
-    'F555W': 0.555,
-    'F814W': 0.814,
+# Resolution information for the longest-wavelength band used by each CMD.
+# The nominal central wavelength is adequate for this diffraction-limit
+# experiment; the important correction is using each telescope's own aperture.
+FILTER_RESOLUTION_CONFIG = {
+    'F200W': {
+        'telescope': 'JWST',
+        'wavelength_um': 2.00,
+        'diameter_m': 6.5,
+    },
+    'F814W': {
+        'telescope': 'HST',
+        'wavelength_um': 0.814,
+        'diameter_m': 2.4,
+    },
 }
 
 PROJECTIONS = {
@@ -124,9 +156,8 @@ MODE_LABELS = {
     'los_yz': 'LOS: YZ sky plane',
 }
 
-
 # %% [markdown]
-# ## Diagram definitions
+# ## CMD definitions
 
 # %%
 @dataclass(frozen=True)
@@ -135,41 +166,33 @@ class Diagram:
     title: str
     xlabel: str
     ylabel: str
-    kind: str
-    blue: str | None = None
-    red: str | None = None
-    y_filter: str | None = None
-    invert_x: bool = False
-    invert_y: bool = False
-    resolution_filter: str | None = None
+    blue: str
+    red: str
+    y_filter: str
+    invert_y: bool
+    resolution_filter: str
 
 
 DIAGRAMS = [
     Diagram(
-        'hr', r'$\log(L/L_\odot)$ vs. $T_{\rm eff}$',
-        r'$T_{\rm eff}$ [K]', r'$\log(L/L_\odot)$', 'hr',
-        invert_x=True, resolution_filter='F200W',
-    ),
-    Diagram(
-        'f070w_f200w', 'F070W - F200W vs. F200W',
-        'F070W - F200W', 'F200W', 'cmd',
-        'F070W', 'F200W', 'F200W', invert_y=True,
+        'f070w_f200w', 'JWST F070W - F200W vs. F200W',
+        'F070W - F200W', 'F200W',
+        'F070W', 'F200W', 'F200W', True,
         resolution_filter='F200W',
     ),
     Diagram(
-        'f182m_f200w', 'F182M - F200W vs. F200W',
-        'F182M - F200W', 'F200W', 'cmd',
-        'F182M', 'F200W', 'F200W', invert_y=True,
+        'f182m_f200w', 'JWST F182M - F200W vs. F200W',
+        'F182M - F200W', 'F200W',
+        'F182M', 'F200W', 'F200W', True,
         resolution_filter='F200W',
     ),
     Diagram(
         'hst_f555w_f814w', 'HST F555W - F814W vs. F814W',
-        'F555W - F814W', 'F814W', 'cmd',
-        'F555W', 'F814W', 'F814W', invert_y=True,
+        'F555W - F814W', 'F814W',
+        'F555W', 'F814W', 'F814W', True,
         resolution_filter='F814W',
     ),
 ]
-
 
 # %% [markdown]
 # ## General helpers
@@ -358,7 +381,7 @@ if len(failed):
 
 
 # %% [markdown]
-# ## Static 1 Myr measurement bins
+# ## Static 1 Myr CMD measurement bins
 
 # %%
 def nearest_iso_index(age_myr):
@@ -368,12 +391,6 @@ def nearest_iso_index(age_myr):
 
 def isochrone_xy(iso, diagram):
     teff = np.asarray(iso.points['Teff'], float)
-    if diagram.kind == 'hr':
-        lum = np.asarray(iso.points['L'], float)
-        y = np.full_like(lum, np.nan)
-        good = np.isfinite(lum) & (lum > 0)
-        y[good] = np.log10(lum[good] / L_SUN_WATTS)
-        return teff, y, teff
     blue = np.asarray(iso.points[ISO_GRID.filter_columns[diagram.blue]], float)
     red = np.asarray(iso.points[ISO_GRID.filter_columns[diagram.red]], float)
     y = np.asarray(iso.points[ISO_GRID.filter_columns[diagram.y_filter]], float)
@@ -405,16 +422,17 @@ def build_static_bins():
     idx = nearest_iso_index(REFERENCE_BIN_AGE_MYR)
     if not np.isclose(ISO_GRID.ages_myr[idx], REFERENCE_BIN_AGE_MYR):
         raise RuntimeError('1 Myr isochrone unavailable')
+
     iso = ISO_GRID.isochrones[idx]
     out = {}
     for d in DIAGRAMS:
-        if d.kind == 'hr':
-            edges = HR_TEFF_BIN_EDGES_K.copy()
-            x3000, x3600 = TEFF_MIN_K, TEFF_MAX_K
-        else:
-            x3000 = interpolate_color_at_teff(iso, d, TEFF_MIN_K)
-            x3600 = interpolate_color_at_teff(iso, d, TEFF_MAX_K)
-            edges = np.linspace(min(x3000, x3600), max(x3000, x3600), N_BINS + 1)
+        x3000 = interpolate_color_at_teff(iso, d, TEFF_MIN_K)
+        x3600 = interpolate_color_at_teff(iso, d, TEFF_MAX_K)
+        edges = np.linspace(
+            min(x3000, x3600),
+            max(x3000, x3600),
+            N_BINS + 1,
+        )
         out[d.key] = {
             'edges': edges,
             'x_3000': x3000,
@@ -430,12 +448,19 @@ for d in DIAGRAMS:
     z = STATIC_BINS[d.key]
     for i, edge in enumerate(z['edges']):
         rows.append({
-            'diagram': d.key, 'diagram_title': d.title,
+            'diagram': d.key,
+            'diagram_title': d.title,
             'reference_isochrone_age_myr': REFERENCE_BIN_AGE_MYR,
-            'x_at_3000k': z['x_3000'], 'x_at_3600k': z['x_3600'],
-            'edge_index': i, 'x_edge': float(edge), 'bin_width': z['bin_width'],
+            'x_at_3000k': z['x_3000'],
+            'x_at_3600k': z['x_3600'],
+            'edge_index': i,
+            'x_edge': float(edge),
+            'bin_width': z['bin_width'],
         })
-pd.DataFrame(rows).to_csv(OUTPUT_DIR / 'static_1myr_bin_definitions.csv', index=False)
+pd.DataFrame(rows).to_csv(
+    OUTPUT_DIR / 'static_1myr_bin_definitions.csv',
+    index=False,
+)
 
 
 def intervals(edges):
@@ -453,43 +478,80 @@ def target_temperature_mask(teff):
     teff = np.asarray(teff, float)
     return np.isfinite(teff) & (teff >= TEFF_MIN_K) & (teff <= TEFF_MAX_K)
 
-
 # %% [markdown]
-# ## JWST angular-resolution thresholds
+# ## Telescope/filter angular-resolution thresholds
+#
+# The longest-wavelength filter in each CMD sets the resolution criterion.
+# The telescope diameter is chosen from the instrument that actually supplies
+# that filter.  Thus the HST CMD uses D=2.4 m, not the JWST 6.5 m aperture.
 
 # %%
-def rayleigh_resolution(wavelength_um):
+def rayleigh_resolution(wavelength_um, diameter_m, distance_pc):
     wavelength_m = float(wavelength_um) * 1e-6
-    theta_rad = RAYLEIGH_FACTOR * wavelength_m / JWST_DIAMETER_M
+    diameter_m = float(diameter_m)
+    distance_pc = float(distance_pc)
+
+    theta_rad = RAYLEIGH_FACTOR * wavelength_m / diameter_m
     theta_arcsec = theta_rad * RAD_TO_ARCSEC
-    physical_pc = theta_rad * OBSERVING_DISTANCE_PC
+
+    # By definition, 1 arcsec at 1 pc subtends 1 AU.
+    physical_au = theta_arcsec * distance_pc
+    physical_pc = physical_au / PC_TO_AU
+
     return {
         'wavelength_um': float(wavelength_um),
+        'diameter_m': diameter_m,
+        'distance_pc': distance_pc,
         'theta_rad': theta_rad,
         'theta_arcsec': theta_arcsec,
         'physical_resolution_pc': physical_pc,
-        'physical_resolution_au': physical_pc * PC_TO_AU,
+        'physical_resolution_au': physical_au,
     }
 
 
 RESOLUTION_BY_DIAGRAM = {}
 resolution_rows = []
+
 for d in DIAGRAMS:
-    filt = d.resolution_filter
-    r = rayleigh_resolution(FILTER_WAVELENGTH_UM[filt])
+    cfg = FILTER_RESOLUTION_CONFIG[d.resolution_filter]
+    r = rayleigh_resolution(
+        wavelength_um=cfg['wavelength_um'],
+        diameter_m=cfg['diameter_m'],
+        distance_pc=OBSERVING_DISTANCE_PC,
+    )
+    r['telescope'] = cfg['telescope']
+    r['resolution_filter'] = d.resolution_filter
     RESOLUTION_BY_DIAGRAM[d.key] = r
+
     resolution_rows.append({
         'diagram': d.key,
         'diagram_title': d.title,
-        'resolution_filter': filt,
-        'jwst_diameter_m': JWST_DIAMETER_M,
-        'distance_pc': OBSERVING_DISTANCE_PC,
-        **r,
+        'telescope': cfg['telescope'],
+        'resolution_filter': d.resolution_filter,
+        **{k: v for k, v in r.items() if k not in {'telescope', 'resolution_filter'}},
     })
+
+
 df_resolution = pd.DataFrame(resolution_rows)
-df_resolution.to_csv(OUTPUT_DIR / 'jwst_resolution_thresholds.csv', index=False)
+df_resolution.to_csv(
+    OUTPUT_DIR / 'instrument_resolution_thresholds.csv',
+    index=False,
+)
+
+print('Angular-resolution thresholds used by the analysis:')
 show_table(df_resolution)
 
+# Print the two distinct resolution scales for inspection.
+jwst_threshold = RESOLUTION_BY_DIAGRAM['f182m_f200w']['physical_resolution_au']
+hst_threshold = RESOLUTION_BY_DIAGRAM['hst_f555w_f814w']['physical_resolution_au']
+print(
+    f'JWST/F200W Rayleigh threshold: {jwst_threshold:.3f} AU at '
+    f'{OBSERVING_DISTANCE_PC:g} pc'
+)
+print(
+    f'HST/F814W Rayleigh threshold:  {hst_threshold:.3f} AU at '
+    f'{OBSERVING_DISTANCE_PC:g} pc'
+)
 
 # %% [markdown]
 # ## Correct unresolved-binary photometry
@@ -1442,8 +1504,16 @@ show_table(
 
 # %% [markdown]
 # ## Construct observed catalogs for each binary-resolution mode
+#
+# Binary source classes retain both origin and angular-resolution state so that
+# CMD plots can distinguish primordial/dynamic populations without obscuring
+# the lower-number classes.
 
 # %%
+def binary_origin(system):
+    return 'primordial' if bool(system['is_primordial_pair']) else 'dynamic'
+
+
 def add_single(rows, system):
     L = float(system['primary_luminosity_watts'])
     row = {
@@ -1452,6 +1522,10 @@ def add_single(rows, system):
         'companion_name': -1,
         'pair_id': '',
         'source_class': 'single',
+        'binary_origin': 'none',
+        'resolution_state': 'single',
+        'is_primordial_pair': False,
+        'is_dynamically_formed_pair': False,
         'age_myr': float(system['primary_age_myr']),
         'mass': float(system['primary_mass']),
         'teff': float(system['primary_teff']),
@@ -1464,6 +1538,9 @@ def add_single(rows, system):
 
 
 def add_resolved_binary(rows, system):
+    origin = binary_origin(system)
+    source_class = f'{origin}_resolved_component'
+
     for prefix, name_col in (
         ('primary', 'primary_name'),
         ('secondary', 'companion_name'),
@@ -1474,7 +1551,11 @@ def add_resolved_binary(rows, system):
             'component_name': int(system[name_col]),
             'companion_name': int(system['companion_name']),
             'pair_id': str(system['pair_id']),
-            'source_class': 'resolved_component',
+            'source_class': source_class,
+            'binary_origin': origin,
+            'resolution_state': 'resolved',
+            'is_primordial_pair': bool(system['is_primordial_pair']),
+            'is_dynamically_formed_pair': bool(system['is_dynamically_formed_pair']),
             'age_myr': float(system[f'{prefix}_age_myr']),
             'mass': float(system[f'{prefix}_mass']),
             'teff': float(system[f'{prefix}_teff']),
@@ -1487,16 +1568,24 @@ def add_resolved_binary(rows, system):
 
 
 def add_unresolved_binary(rows, system):
+    origin = binary_origin(system)
+    source_class = f'{origin}_unresolved_binary'
     L = float(system['combined_luminosity_watts'])
+
     row = {
         'system_name': int(system['system_name']),
         'component_name': int(system['primary_name']),
         'companion_name': int(system['companion_name']),
         'pair_id': str(system['pair_id']),
-        'source_class': 'unresolved_binary',
-        # There is no single physical stellar age for a dynamically assembled
-        # unresolved system. Retain the primary age as a bookkeeping value;
-        # the photometry itself was calculated from the two individual ages.
+        'source_class': source_class,
+        'binary_origin': origin,
+        'resolution_state': 'unresolved',
+        'is_primordial_pair': bool(system['is_primordial_pair']),
+        'is_dynamically_formed_pair': bool(system['is_dynamically_formed_pair']),
+        # The two component fluxes are combined in every filter below.  The
+        # equivalent composite Teff is retained only for the pre-existing
+        # 3000--3600 K selection used by the spread metric; no H-R diagram is
+        # constructed from it.
         'age_myr': float(system['primary_age_myr']),
         'mass': float(system['primary_mass'] + system['companion_mass']),
         'teff': float(system['combined_teff']),
@@ -1542,17 +1631,11 @@ def observed_catalog(base_df, diagram, mode):
 
     return pd.DataFrame(rows)
 
-
 # %% [markdown]
 # ## Spread metric
 
 # %%
 def catalog_xy(df, diagram):
-    if diagram.kind == 'hr':
-        return (
-            df['teff'].to_numpy(float),
-            df['log_luminosity_lsun'].to_numpy(float),
-        )
     blue = df[f'mag_{diagram.blue}'].to_numpy(float)
     red = df[f'mag_{diagram.red}'].to_numpy(float)
     y = df[f'mag_{diagram.y_filter}'].to_numpy(float)
@@ -1618,6 +1701,11 @@ def measure(df, diagram, mode, time_myr):
     counts = df['source_class'].value_counts().to_dict()
     r = RESOLUTION_BY_DIAGRAM[diagram.key]
 
+    n_prim_resolved_components = int(counts.get('primordial_resolved_component', 0))
+    n_dyn_resolved_components = int(counts.get('dynamic_resolved_component', 0))
+    n_prim_unresolved = int(counts.get('primordial_unresolved_binary', 0))
+    n_dyn_unresolved = int(counts.get('dynamic_unresolved_binary', 0))
+
     summary = {
         'cluster_mass_msun': CLUSTER_MASS_MSUN,
         'sigma_cloud_g_cm2': SIGMA_CLOUD,
@@ -1628,22 +1716,27 @@ def measure(df, diagram, mode, time_myr):
         'diagram_title': diagram.title,
         'resolution_mode': mode,
         'resolution_mode_label': MODE_LABELS[mode],
+        'telescope': r['telescope'],
         'resolution_filter': diagram.resolution_filter,
         'resolution_wavelength_um': r['wavelength_um'],
+        'resolution_diameter_m': r['diameter_m'],
         'resolution_arcsec': r['theta_arcsec'],
-        'resolution_au_at_400pc': r['physical_resolution_au'],
+        'resolution_au': r['physical_resolution_au'],
         'spread_metric': float(valid.mean()) if len(valid) else np.nan,
         'n_valid_bins': int(len(valid)),
         'n_total_bins': N_BINS,
         'n_observed_sources': int(len(df)),
         'n_single_sources': int(counts.get('single', 0)),
-        'n_resolved_components': int(counts.get('resolved_component', 0)),
-        'n_unresolved_binary_sources': int(counts.get('unresolved_binary', 0)),
+        'n_resolved_components': n_prim_resolved_components + n_dyn_resolved_components,
+        'n_unresolved_binary_sources': n_prim_unresolved + n_dyn_unresolved,
+        'n_primordial_resolved_components': n_prim_resolved_components,
+        'n_dynamic_resolved_components': n_dyn_resolved_components,
+        'n_primordial_unresolved_binary_sources': n_prim_unresolved,
+        'n_dynamic_unresolved_binary_sources': n_dyn_unresolved,
         'n_in_full_x_span_before_teff_cut': int(full_span.sum()),
         'n_retained_in_temperature_band': int(teff_ok.sum()),
     }
     return summary, bins
-
 
 SUMMARY_PATH = CACHE_DIR / 'spread_summary.csv'
 BINS_PATH = CACHE_DIR / 'spread_bins.csv'
@@ -1710,27 +1803,39 @@ for t in ANALYSIS_TIMES_MYR:
     ]
 
     for d in DIAGRAMS:
-        threshold = RESOLUTION_BY_DIAGRAM[d.key]['physical_resolution_pc']
+        r = RESOLUTION_BY_DIAGRAM[d.key]
+        threshold = r['physical_resolution_pc']
 
         for projection in PROJECTIONS:
             sep = binaries[f'sep_{projection.lower()}_pc'].to_numpy(float)
             good = np.isfinite(sep)
             unresolved = good & (sep <= threshold)
+            resolved = good & ~unresolved
+
+            primordial = binaries['is_primordial_pair'].astype(bool).to_numpy()
+            dynamic = binaries['is_dynamically_formed_pair'].astype(bool).to_numpy()
 
             frac_rows.append({
                 'snapshot_time_myr': t,
                 'diagram': d.key,
+                'telescope': r['telescope'],
+                'resolution_filter': d.resolution_filter,
                 'projection': projection,
                 'n_binaries': int(good.sum()),
                 'n_unresolved': int(unresolved.sum()),
-                'n_resolved': int((good & ~unresolved).sum()),
+                'n_resolved': int(resolved.sum()),
+                'n_primordial_unresolved': int((unresolved & primordial).sum()),
+                'n_primordial_resolved': int((resolved & primordial).sum()),
+                'n_dynamic_unresolved': int((unresolved & dynamic).sum()),
+                'n_dynamic_resolved': int((resolved & dynamic).sum()),
                 'fraction_unresolved': (
                     float(unresolved.sum() / good.sum())
                     if good.sum()
                     else np.nan
                 ),
+                'resolution_arcsec': r['theta_arcsec'],
                 'resolution_pc': threshold,
-                'resolution_au': threshold * PC_TO_AU,
+                'resolution_au': r['physical_resolution_au'],
             })
 
 
@@ -1740,31 +1845,63 @@ df_binary_fractions.to_csv(
     index=False,
 )
 
-
 # %% [markdown]
 # ## Plotting
+#
+# Color design intentionally gives the most numerous populations lighter,
+# lower-alpha markers so they do not wash out the rarer populations:
+# - primordial resolved: dark navy;
+# - primordial unresolved: sky blue;
+# - dynamic resolved: dark red;
+# - dynamic unresolved: pale red with low alpha.
 
 # %%
 SOURCE_STYLE = {
     'single': dict(
-        color='0.45',
+        color='0.55',
         label='Single stars',
+        s=5,
+        alpha=0.10,
+        zorder=1,
+    ),
+    'dynamic_unresolved_binary': dict(
+        color='#f6a6a6',
+        label='Dynamic unresolved binaries',
         s=8,
-        alpha=0.28,
+        alpha=0.22,
+        zorder=2,
     ),
-    'resolved_component': dict(
-        color='tab:blue',
-        label='Resolved binary primaries/secondaries',
-        s=9,
-        alpha=0.55,
+    'primordial_unresolved_binary': dict(
+        color='#76b7e5',
+        label='Primordial unresolved binaries',
+        s=10,
+        alpha=0.42,
+        zorder=3,
     ),
-    'unresolved_binary': dict(
-        color='tab:orange',
-        label='Unresolved binaries',
+    'dynamic_resolved_component': dict(
+        color='#8b1a1a',
+        label='Dynamic resolved components',
         s=13,
         alpha=0.72,
+        zorder=4,
+    ),
+    'primordial_resolved_component': dict(
+        color='#08306b',
+        label='Primordial resolved components',
+        s=16,
+        alpha=0.90,
+        zorder=5,
     ),
 }
+
+# Plot dominant/light classes first; rarer/darker classes are drawn last.
+SOURCE_PLOT_ORDER = (
+    'single',
+    'dynamic_unresolved_binary',
+    'primordial_unresolved_binary',
+    'dynamic_resolved_component',
+    'primordial_resolved_component',
+)
 
 
 def shade_bins(ax, diagram):
@@ -1774,7 +1911,7 @@ def shade_bins(ax, diagram):
             low,
             high,
             color=plt.get_cmap('viridis')((i + 0.5) / N_BINS),
-            alpha=0.055,
+            alpha=0.045,
             linewidth=0,
             zorder=0,
         )
@@ -1782,7 +1919,7 @@ def shade_bins(ax, diagram):
 
 def source_legend_handles():
     out = []
-    for key in ('single', 'resolved_component', 'unresolved_binary'):
+    for key in SOURCE_PLOT_ORDER:
         s = SOURCE_STYLE[key]
         out.append(
             Line2D(
@@ -1791,8 +1928,8 @@ def source_legend_handles():
                 linestyle='none',
                 markerfacecolor=s['color'],
                 markeredgecolor='none',
-                markersize=6,
-                alpha=s['alpha'],
+                markersize=max(5, np.sqrt(s['s']) * 1.8),
+                alpha=max(s['alpha'], 0.45),
                 label=s['label'],
             )
         )
@@ -1812,16 +1949,18 @@ def plot_observed_panel(ax, time_myr, diagram, mode):
         xi[good_iso],
         yi[good_iso],
         color='black',
-        alpha=0.55,
+        alpha=0.45,
         lw=1.0,
+        zorder=1,
     )
 
     classes = df['source_class'].to_numpy(str)
-    for source_class in ('single', 'resolved_component', 'unresolved_binary'):
+    for source_class in SOURCE_PLOT_ORDER:
         mask = classes == source_class
         good = mask & np.isfinite(x) & np.isfinite(y)
         if not good.any():
             continue
+
         style = SOURCE_STYLE[source_class]
         ax.scatter(
             x[good],
@@ -1830,11 +1969,9 @@ def plot_observed_panel(ax, time_myr, diagram, mode):
             alpha=style['alpha'],
             color=style['color'],
             edgecolors='none',
-            zorder=2,
+            zorder=style['zorder'],
         )
 
-    if diagram.invert_x:
-        ax.invert_xaxis()
     if diagram.invert_y:
         ax.invert_yaxis()
 
@@ -1863,6 +2000,7 @@ def plot_observed_panel(ax, time_myr, diagram, mode):
             ha='left',
             va='bottom',
             bbox=dict(facecolor='white', edgecolor='0.7', alpha=0.82),
+            zorder=10,
         )
 
     ax.set_title(f't = {time_myr:g} Myr')
@@ -1930,7 +2068,7 @@ for d in DIAGRAMS:
         fig.suptitle(
             d.title + '\n'
             + f'{projection} sky plane at {OBSERVING_DISTANCE_PC:g} pc; '
-            + f'{d.resolution_filter}: '
+            + f'{r["telescope"]} {d.resolution_filter}: '
             + rf'$\theta_R={r["theta_arcsec"]:.3f}\,\mathrm{{arcsec}}$ '
             + f'= {r["physical_resolution_au"]:.1f} AU\n'
             + rf'$\epsilon_{{\rm ff}}={EPSILON_FF:g}$, seed {SEED}',
@@ -1947,10 +2085,6 @@ for d in DIAGRAMS:
             fig,
             f'time_evolution_los_{projection.lower()}_{d.key}.png',
         )
-
-
-def spread_unit(d):
-    return 'dex' if d.kind == 'hr' else 'mag'
 
 
 # Direct all-resolved / all-unresolved spread comparison.
@@ -1971,7 +2105,7 @@ for d in DIAGRAMS:
         )
 
     ax.set_xlabel('Cluster time [Myr]')
-    ax.set_ylabel(f'Mean quartile-tail spread [{spread_unit(d)}]')
+    ax.set_ylabel('Mean quartile-tail spread [mag]')
     ax.set_title(d.title + '\nAll-resolved versus all-unresolved binaries')
     ax.grid(alpha=0.25)
     ax.legend(frameon=False)
@@ -1999,10 +2133,11 @@ for d in DIAGRAMS:
 
     r = RESOLUTION_BY_DIAGRAM[d.key]
     ax.set_xlabel('Cluster time [Myr]')
-    ax.set_ylabel(f'Mean quartile-tail spread [{spread_unit(d)}]')
+    ax.set_ylabel('Mean quartile-tail spread [mag]')
     ax.set_title(
         d.title + '\n'
-        + f'JWST at {OBSERVING_DISTANCE_PC:g} pc; {d.resolution_filter}: '
+        + f'{r["telescope"]} at {OBSERVING_DISTANCE_PC:g} pc; '
+        + f'{d.resolution_filter}: '
         + f'{r["theta_arcsec"]:.3f} arcsec = {r["physical_resolution_au"]:.1f} AU'
     )
     ax.grid(alpha=0.25)
@@ -2027,10 +2162,16 @@ for d in DIAGRAMS:
             label=projection,
         )
 
+    r = RESOLUTION_BY_DIAGRAM[d.key]
     ax.set_xlabel('Cluster time [Myr]')
     ax.set_ylabel('Fraction of current binaries unresolved')
     ax.set_ylim(0.0, 1.0)
-    ax.set_title(d.title + '\nProjected binary-resolution fraction')
+    ax.set_title(
+        d.title + '\n'
+        + f'{r["telescope"]} {d.resolution_filter}: '
+        + f'{r["physical_resolution_au"]:.1f} AU Rayleigh threshold at '
+        + f'{OBSERVING_DISTANCE_PC:g} pc'
+    )
     ax.grid(alpha=0.25)
     ax.legend(frameon=False)
     finish_figure(fig, f'fraction_unresolved_by_projection_{d.key}.png')
@@ -2063,13 +2204,12 @@ ax.grid(alpha=0.25)
 ax.legend(frameon=False)
 finish_figure(fig, 'binary_population_census_vs_time.png')
 
-
 # %% [markdown]
 # ## Metadata / manifest
 
 # %%
 metadata = {
-    'analysis_version': 2,
+    'analysis_version': 'cmd_resolution',
     'simulation_path': str(SIMULATION_PATH),
     'cluster_mass_msun': CLUSTER_MASS_MSUN,
     'sigma_cloud_g_cm2': SIGMA_CLOUD,
@@ -2077,11 +2217,10 @@ metadata = {
     'seed': SEED,
     'photometric_distance_pc': DISTANCE_PC,
     'binary_resolution_distance_pc': OBSERVING_DISTANCE_PC,
-    'jwst_diameter_m': JWST_DIAMETER_M,
     'rayleigh_factor': RAYLEIGH_FACTOR,
-    'filter_wavelength_um': FILTER_WAVELENGTH_UM,
+    'filter_resolution_config': FILTER_RESOLUTION_CONFIG,
     'projections': PROJECTIONS,
-    'hr_resolution_filter': 'F200W',
+    'hr_diagram_included': False,
     'current_binary_definition': (
         'snapshot.resolve_set(snapshot.unresolved_stars, split_set=True) '
         'evaluated independently at every snapshot'
@@ -2093,6 +2232,11 @@ metadata = {
         'current binary appears in snapshot.unbound_stars_unresolved; '
         'resolved component membership used as fallback'
     ),
+    'resolution_definition': (
+        'Rayleigh theta=1.22 lambda/D using the longest-wavelength filter in '
+        'each CMD and that filter telescope aperture; unresolved when projected '
+        'separation <= theta * DISTANCE_PC, with DISTANCE_PC=410 pc'
+    ),
     'resolution_transition_definition': (
         'state changes are counted only across consecutive 0.5 Myr analysis '
         'snapshots in which the same unordered binary pair is present'
@@ -2102,8 +2246,10 @@ metadata = {
         'in every band; sum same-band 10^(-0.4m) flux ratios; convert total '
         'flux back to magnitude; calculate CMD color from combined magnitudes.'
     ),
-    'unresolved_hr_definition': (
-        'L_total=L1+L2; equivalent Teff from summed emitting-area proxy L/T^4.'
+    'temperature_selection_note': (
+        'The existing 3000--3600 K selection is retained. For an unresolved '
+        'binary, the equivalent composite Teff is used only as the internal '
+        'selection proxy; no H-R diagram is generated.'
     ),
     'analysis_times_myr': ANALYSIS_TIMES_MYR.tolist(),
     'display_times_myr': DISPLAY_TIMES_MYR.tolist(),
@@ -2112,6 +2258,7 @@ metadata = {
     'minimum_stars_per_bin': MIN_STARS_PER_BIN,
     'filters': FILTER_OBSMODES,
     'diagrams': [asdict(d) for d in DIAGRAMS],
+    'plot_color_scheme': SOURCE_STYLE,
 }
 
 (OUTPUT_DIR / 'analysis_metadata.json').write_text(
@@ -2119,24 +2266,24 @@ metadata = {
 )
 
 manifest = pd.DataFrame([
-    ('jwst_resolution_thresholds.csv', 'Rayleigh thresholds by diagram at 400 pc.'),
+    ('instrument_resolution_thresholds.csv', 'Rayleigh thresholds using JWST 6.5 m or HST 2.4 m as appropriate.'),
     ('binary_snapshot_census.csv', 'Current primordial/dynamic/ejected binary counts by snapshot.'),
     ('binary_snapshot_history.csv', 'Every current binary system at every analyzed snapshot.'),
     ('binary_lifecycle_summary.csv', 'One-row lifecycle summary for every unique binary pair.'),
     ('dynamically_formed_binaries.csv', 'Unique binary pairs not present as binaries in snapshot 0.'),
     ('ejected_binaries.csv', 'Unique binary pairs classified unbound/ejected at least once.'),
-    ('binary_resolution_state_history.csv', 'Resolved/unresolved state for every pair/diagram/projection/snapshot.'),
-    ('binary_resolution_transition_summary.csv', 'Per-pair transition counts for every diagram/projection.'),
+    ('binary_resolution_state_history.csv', 'Resolved/unresolved state for every pair/CMD/projection/snapshot.'),
+    ('binary_resolution_transition_summary.csv', 'Per-pair transition counts for every CMD/projection.'),
     ('binaries_changing_resolved_state.csv', 'Pairs with at least one consecutive-snapshot resolution state change.'),
     ('binaries_oscillating_both_directions.csv', 'Pairs with both resolved->unresolved and unresolved->resolved transitions.'),
-    ('resolution_transition_statistics.csv', 'Counts of state-changing/oscillating pairs by diagram and projection.'),
-    ('binary_resolution_fractions.csv', 'Unresolved fractions in XY/XZ/YZ by snapshot.'),
-    ('spread_metrics_binary_resolution.csv', 'Spread metric for all-resolved, all-unresolved, and three LOS modes.'),
-    ('spread_metrics_binary_resolution_per_bin.csv', 'Per-bin spread measurements.'),
-    ('time_evolution_extremes_*.png', 'All-resolved versus all-unresolved time-evolution diagrams.'),
-    ('time_evolution_los_*_*.png', 'LOS diagrams colored by single/resolved/unresolved source type.'),
-    ('spread_extreme_binary_resolution_*.png', 'Extreme-case spread comparison.'),
-    ('spread_all_binary_resolution_modes_*.png', 'Extreme plus XY/XZ/YZ spread curves.'),
+    ('resolution_transition_statistics.csv', 'Counts of state-changing/oscillating pairs by CMD and projection.'),
+    ('binary_resolution_fractions.csv', 'Unresolved fractions and primordial/dynamic resolved-state counts in XY/XZ/YZ.'),
+    ('spread_metrics_binary_resolution.csv', 'CMD spread metric for all-resolved, all-unresolved, and three LOS modes.'),
+    ('spread_metrics_binary_resolution_per_bin.csv', 'Per-bin CMD spread measurements.'),
+    ('time_evolution_extremes_*.png', 'All-resolved versus all-unresolved CMD time-evolution diagrams.'),
+    ('time_evolution_los_*_*.png', 'LOS CMDs colored by primordial/dynamic and resolved/unresolved class.'),
+    ('spread_extreme_binary_resolution_*.png', 'Extreme-case CMD spread comparison.'),
+    ('spread_all_binary_resolution_modes_*.png', 'Extreme plus XY/XZ/YZ CMD spread curves.'),
     ('fraction_unresolved_by_projection_*.png', 'Unresolved fraction versus time.'),
     ('binary_population_census_vs_time.png', 'Primordial/dynamic/ejected binary counts versus time.'),
     ('analysis_metadata.json', 'Full configuration and operational definitions.'),
@@ -2145,9 +2292,10 @@ manifest = pd.DataFrame([
 manifest.to_csv(OUTPUT_DIR / 'output_manifest.csv', index=False)
 
 print('\n' + '=' * 80)
-print('Binary-resolution analysis complete')
+print('Binary-resolution CMD analysis complete')
 print('Outputs:', OUTPUT_DIR.resolve())
 print('Cache:', CACHE_DIR.resolve())
+print('Resolution table:', (OUTPUT_DIR / 'instrument_resolution_thresholds.csv').resolve())
 print('Spread table:', (OUTPUT_DIR / 'spread_metrics_binary_resolution.csv').resolve())
 print('Lifecycle table:', (OUTPUT_DIR / 'binary_lifecycle_summary.csv').resolve())
 print('Resolution transitions:', (OUTPUT_DIR / 'binary_resolution_transition_summary.csv').resolve())
