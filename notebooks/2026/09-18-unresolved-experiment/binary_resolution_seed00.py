@@ -585,8 +585,9 @@ def equivalent_binary_teff(L1, T1, L2, T2):
 # independently at EVERY snapshot. This naturally permits binary formation,
 # disruption, exchange, and orbital motion.
 #
-# "Dynamically formed" means an unordered current NAME pair was not present
-# as a binary in snapshot 0.
+# "Dynamically formed" means an unordered current NAME pair was not one of the
+# binaries sampled primordially and introduced either at snapshot 0 or later
+# during gradual cluster formation.
 #
 # "Ejected" means the current pair is classified as an unbound binary by
 # snapshot.unbound_stars_unresolved. Component membership in the resolved
@@ -732,31 +733,143 @@ def resolved_name_set_from_subset(snapshot, unresolved_subset):
         return set()
 
 
-def get_primordial_binary_pairs(sim_path):
+def get_full_primordial_system_population(sim_path):
+    """Reconstruct the full *sampled* primordial population.
+
+    This follows Juan's ``get_primordial_binary_population`` definition:
+    binaries present at snapshot 0 are primordial, and BINARY/SINGLE records
+    introduced later through ``gradual.97`` are also primordial systems.  The
+    later appearance time is a formation/insertion time, not a dynamical-binary
+    formation event.
+
+    The snapshot-0 ``single`` array returned by ``get_binary_data`` can contain
+    component NAMEs that also belong to snapshot-0 binaries, so those binary
+    components are explicitly removed before counting true single systems.
+    """
     path = os.path.abspath(str(sim_path))
     if not path.endswith('/'):
         path += '/'
 
-    snapshot0 = Reader.read_snapshot(path, snapshot=0)
-    snapshot0.to_physical()
-    _, primaries, secondaries = split_resolved_set(
-        snapshot0,
-        snapshot0.unresolved_stars,
+    # Juan's function starts from this snapshot-0 population.
+    data0 = converter.get_binary_data(path, 0)
+
+    primary0 = np.asarray(data0['primary'], dtype=int)
+    secondary0 = np.asarray(data0['secondary'], dtype=int)
+    candidate_single0 = np.asarray(data0['single'], dtype=int)
+
+    primordial_binary_components0 = np.concatenate([primary0, secondary0])
+    true_single0 = candidate_single0[
+        ~np.isin(candidate_single0, primordial_binary_components0)
+    ]
+
+    rows = []
+    for p0, s0 in zip(primary0, secondary0):
+        rows.append({
+            'system_type': 'binary',
+            'primary_name': int(p0),
+            'secondary_name': int(s0),
+            'insertion_time_myr': 0.0,
+            'source': 'snapshot_0',
+        })
+    for n0 in true_single0:
+        rows.append({
+            'system_type': 'single',
+            'primary_name': int(n0),
+            'secondary_name': -1,
+            'insertion_time_myr': 0.0,
+            'source': 'snapshot_0',
+        })
+
+    # Adapt the gradual.97 portion of Juan's
+    # get_primordial_binary_population(path, tmin=...).
+    gradual_path = Path(path) / 'gradual.97'
+    with gradual_path.open() as fh:
+        for line_number, line in enumerate(fh, start=1):
+            if 'TIME' in line:
+                continue
+            fields = line.split()
+            if not fields:
+                continue
+
+            record_type = fields[0].upper()
+            if record_type not in {'BINARY', 'SINGLE'}:
+                continue
+
+            insertion_time = float(fields[2])
+            if record_type == 'BINARY':
+                rows.append({
+                    'system_type': 'binary',
+                    'primary_name': int(float(fields[3])),
+                    'secondary_name': int(float(fields[4])),
+                    'insertion_time_myr': insertion_time,
+                    'source': f'gradual.97:{line_number}',
+                })
+            else:
+                rows.append({
+                    'system_type': 'single',
+                    'primary_name': int(float(fields[3])),
+                    'secondary_name': -1,
+                    'insertion_time_myr': insertion_time,
+                    'source': f'gradual.97:{line_number}',
+                })
+
+    population = pd.DataFrame(rows)
+
+    # Juan's routine appends gradual.97 to snapshot 0.  If an implementation
+    # writes the snapshot-0 systems into gradual.97 as well, retain each sampled
+    # system only once.  This is identity bookkeeping, not a fraction failsafe.
+    population['pair_key'] = [
+        pair_key(pn, sn) if st == 'binary' else (int(pn), -1)
+        for st, pn, sn in zip(
+            population['system_type'],
+            population['primary_name'],
+            population['secondary_name'],
+        )
+    ]
+    population = population.sort_values(
+        ['insertion_time_myr', 'source'], kind='stable'
+    ).drop_duplicates(
+        subset=['system_type', 'pair_key'], keep='first'
+    ).reset_index(drop=True)
+
+    binaries = population['system_type'].eq('binary')
+    n_binary = int(binaries.sum())
+    n_single = int((~binaries).sum())
+    binary_system_fraction = n_binary / (n_binary + n_single)
+
+    print('Full sampled primordial system population:')
+    print(f'  binary systems: {n_binary}')
+    print(f'  single systems: {n_single}')
+    print(f'  B/(S+B):        {binary_system_fraction:.4f}')
+    if not (0.40 <= binary_system_fraction <= 0.60):
+        print('  WARNING: primordial system binary fraction is not close to 0.5;')
+        print('           inspect the reconstructed sampled population before interpreting plots.')
+    print(
+        f'  insertion times: {population["insertion_time_myr"].min():.4f} '
+        f'to {population["insertion_time_myr"].max():.4f} Myr'
     )
 
-    pairs = {
-        pair_key(p, s)
-        for p, s in zip(
-            np.asarray(primaries.name, int),
-            np.asarray(secondaries.name, int),
-        )
-    }
-
-    print(f'Primordial binary pairs at snapshot 0: {len(pairs)}')
-    return pairs
+    return population
 
 
-PRIMORDIAL_BINARY_PAIRS = get_primordial_binary_pairs(SIMULATION_PATH)
+PRIMORDIAL_SYSTEM_POPULATION = get_full_primordial_system_population(
+    SIMULATION_PATH
+)
+PRIMORDIAL_BINARY_PAIRS = {
+    pair_key(row.primary_name, row.secondary_name)
+    for row in PRIMORDIAL_SYSTEM_POPULATION.itertuples()
+    if row.system_type == 'binary'
+}
+PRIMORDIAL_BINARY_BIRTH_TIME = {
+    pair_key(row.primary_name, row.secondary_name): float(row.insertion_time_myr)
+    for row in PRIMORDIAL_SYSTEM_POPULATION.itertuples()
+    if row.system_type == 'binary'
+}
+
+PRIMORDIAL_SYSTEM_POPULATION.to_csv(
+    OUTPUT_DIR / 'full_sampled_primordial_system_population.csv',
+    index=False,
+)
 
 
 def load_snapshot_system_table(sim_path, time_myr):
@@ -1440,7 +1553,7 @@ df_true_oscillators.to_csv(
 print('\n' + '=' * 80)
 print('BINARY DYNAMICS SUMMARY')
 print('=' * 80)
-print(f'Primordial binary pairs at snapshot 0: {len(PRIMORDIAL_BINARY_PAIRS)}')
+print(f'Full sampled primordial binary-pair inventory: {len(PRIMORDIAL_BINARY_PAIRS)}')
 print(f'Unique binary pairs seen from 1--20 Myr: {len(df_binary_lifecycle)}')
 print(f'Dynamically formed unique pairs: {len(df_dynamic_binaries)}')
 print(f'Pairs ever classified as ejected/unbound: {len(df_ejected_binaries)}')
@@ -1848,48 +1961,47 @@ df_binary_fractions.to_csv(
 # %% [markdown]
 # ## Plotting
 #
-# Color design intentionally gives the most numerous populations lighter,
-# lower-alpha markers so they do not wash out the rarer populations:
-# - primordial resolved: dark navy;
-# - primordial unresolved: sky blue;
-# - dynamic resolved: dark red;
-# - dynamic unresolved: pale red with low alpha.
+# Color design uses hue for origin and shade for angular resolution:
+# - primordial resolved: dark blue; primordial unresolved: light blue;
+# - dynamic resolved: dark red; dynamic unresolved: light red.
+# Resolved and unresolved binary classes use the same alpha; the distinction
+# is therefore encoded by shade rather than transparency.
 
 # %%
 SOURCE_STYLE = {
     'single': dict(
-        color='0.55',
+        color='#bdbdbd',
         label='Single stars',
-        s=5,
-        alpha=0.10,
+        s=3.0,
+        alpha=0.65,
         zorder=1,
     ),
     'dynamic_unresolved_binary': dict(
-        color='#f6a6a6',
+        color='#f4a3a3',
         label='Dynamic unresolved binaries',
-        s=8,
-        alpha=0.22,
+        s=4.0,
+        alpha=0.85,
         zorder=2,
     ),
     'primordial_unresolved_binary': dict(
-        color='#76b7e5',
+        color='#9ecae1',
         label='Primordial unresolved binaries',
-        s=10,
-        alpha=0.42,
+        s=4.0,
+        alpha=0.85,
         zorder=3,
     ),
     'dynamic_resolved_component': dict(
-        color='#8b1a1a',
+        color='#9b1c1c',
         label='Dynamic resolved components',
-        s=13,
-        alpha=0.72,
+        s=4.5,
+        alpha=0.85,
         zorder=4,
     ),
     'primordial_resolved_component': dict(
-        color='#08306b',
+        color='#08519c',
         label='Primordial resolved components',
-        s=16,
-        alpha=0.90,
+        s=4.5,
+        alpha=0.85,
         zorder=5,
     ),
 }
@@ -1928,8 +2040,8 @@ def source_legend_handles():
                 linestyle='none',
                 markerfacecolor=s['color'],
                 markeredgecolor='none',
-                markersize=max(5, np.sqrt(s['s']) * 1.8),
-                alpha=max(s['alpha'], 0.45),
+                markersize=5.0,
+                alpha=1.0,
                 label=s['label'],
             )
         )
@@ -2032,13 +2144,17 @@ for d in DIAGRAMS:
         + rf'$M_{{\rm cl}}={CLUSTER_MASS_MSUN}\ M_\odot$, '
         + rf'$\epsilon_{{\rm ff}}={EPSILON_FF:g}$, seed {SEED}',
         fontsize=14,
+        y=1.055,
     )
     fig.legend(
         handles=source_legend_handles(),
         loc='upper center',
-        ncol=3,
+        ncol=5,
         frameon=False,
-        bbox_to_anchor=(0.5, 1.005),
+        bbox_to_anchor=(0.5, 0.975),
+        fontsize=9,
+        columnspacing=1.2,
+        handletextpad=0.45,
     )
     finish_figure(fig, f'time_evolution_extremes_{d.key}.png')
 
@@ -2055,8 +2171,15 @@ for d in DIAGRAMS:
             nrows,
             ncols,
             figsize=(4.4 * ncols, 4.0 * nrows),
-            constrained_layout=True,
+            constrained_layout=False,
             squeeze=False,
+        )
+        # Reserve a dedicated header band: title at the very top, legend below it,
+        # and panels below both.  This prevents either the title or legend from
+        # overlapping the CMD axes.
+        fig.subplots_adjust(
+            left=0.055, right=0.985, bottom=0.075,
+            top=0.805, hspace=0.30, wspace=0.20,
         )
 
         for ax, t in zip(axes.flat, times):
@@ -2073,13 +2196,17 @@ for d in DIAGRAMS:
             + f'= {r["physical_resolution_au"]:.1f} AU\n'
             + rf'$\epsilon_{{\rm ff}}={EPSILON_FF:g}$, seed {SEED}',
             fontsize=14,
+            y=0.985,
         )
         fig.legend(
             handles=source_legend_handles(),
             loc='upper center',
-            ncol=3,
+            ncol=5,
             frameon=False,
-            bbox_to_anchor=(0.5, 1.005),
+            bbox_to_anchor=(0.5, 0.875),
+            fontsize=9,
+            columnspacing=1.2,
+            handletextpad=0.45,
         )
         finish_figure(
             fig,
@@ -2226,7 +2353,7 @@ metadata = {
         'evaluated independently at every snapshot'
     ),
     'dynamically_formed_definition': (
-        'unordered current component NAME pair was not a binary pair in snapshot 0'
+        'unordered current component NAME pair is absent from the full sampled primordial binary inventory (snapshot 0 plus gradual.97 BINARY introductions)'
     ),
     'ejected_binary_definition': (
         'current binary appears in snapshot.unbound_stars_unresolved; '
@@ -2270,7 +2397,7 @@ manifest = pd.DataFrame([
     ('binary_snapshot_census.csv', 'Current primordial/dynamic/ejected binary counts by snapshot.'),
     ('binary_snapshot_history.csv', 'Every current binary system at every analyzed snapshot.'),
     ('binary_lifecycle_summary.csv', 'One-row lifecycle summary for every unique binary pair.'),
-    ('dynamically_formed_binaries.csv', 'Unique binary pairs not present as binaries in snapshot 0.'),
+    ('dynamically_formed_binaries.csv', 'Unique current binary pairs absent from the full sampled primordial pair inventory.'),
     ('ejected_binaries.csv', 'Unique binary pairs classified unbound/ejected at least once.'),
     ('binary_resolution_state_history.csv', 'Resolved/unresolved state for every pair/CMD/projection/snapshot.'),
     ('binary_resolution_transition_summary.csv', 'Per-pair transition counts for every CMD/projection.'),
