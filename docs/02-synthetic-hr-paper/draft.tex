@@ -683,7 +683,7 @@ The binary-resolution result is also largely insensitive to the viewing orientat
 This behavior is present in all three tested photometric projections:
 $(F070W-F200W)$ versus F200W,
 $(F182M-F200W)$ versus F200W, and
-$(F555W-F814W)$ versus F814W. 
+$(F555W-F814W)$ versus F814W.
 Although the numerical value of the spread and the instrumental resolution threshold differ between filter combinations, the same qualitative result is recovered in each case: unresolved binaries increase the spread, realistic angular resolution places the observation closer to the all-unresolved limit, and changing the viewing axis produces only a small effect.
 
 \begin{figure*}
@@ -695,12 +695,44 @@ Although the numerical value of the spread and the instrumental resolution thres
     $\Sigma_{\rm cloud}=0.1\,{\rm g\,cm^{-2}}$,
     $\epsilon_{\rm ff}=0.03$, seed 00 simulation.
     The top row shows the quartile-tail spread as a function of cluster time for the all-resolved and all-unresolved limiting treatments and for Rayleigh-limited observations in the XY, XZ, and YZ sky-plane projections. The bottom row shows the corresponding fraction of current binary systems classified as unresolved. Columns correspond to
-    $(F070W-F200W)$ versus F200W, $(F182M-F200W)$ versus F200W, and $(F555W-F814W)$ versus F814W.
+    $(F070W-F200W)$ versus F200W,
+    $(F182M-F200W)$ versus F200W, and
+    $(F555W-F814W)$ versus F814W.
     Approximately 70--80\% of binary systems are unresolved for the representative cluster at 410 pc, causing the Rayleigh-limited spread to lie substantially closer to the all-unresolved limit than to the all-resolved limit. The three viewing projections produce similar results, indicating little dependence on viewing orientation.}
     \label{fig:binary-resolution-summary}
 \end{figure*}
 
-These results show that unresolved multiplicity is an important systematic when interpreting the absolute value of a CMD-spread measurement. The difference between resolved and unresolved treatments is comparable to a zero-point shift in the spread relation: the physical trend with cluster evolution remains, but the observed sequence is broadened by flux blending. Consequently, synthetic and observed clusters should be compared using consistent assumptions about instrumental angular resolution and binary blending.
+The effect of these different binary treatments on the appearance of the stellar population is illustrated directly in Figure~\ref{fig:binary-resolution-time-evolution}. The figure follows the same representative simulation through six cluster times in $(F182M-F200W)$ versus F200W space. Each panel contains the same 1--20 Myr isochrone grid, allowing differences between the three binary-resolution treatments to be compared against the underlying stellar-evolution sequence.
+
+In the all-resolved case, every stellar component appears as an independent source. In the all-unresolved case, the two components of each binary system are replaced by a single source whose flux is the sum of the component fluxes. The resulting systems are displaced toward brighter F200W magnitudes, visually producing the broader vertical distribution reflected in the spread metric.
+
+The Rayleigh-limited XY projection produces an intermediate population, but its morphology more closely resembles the all-unresolved case than the all-resolved case. Most primordial binary systems are represented by the dark-blue unresolved population, while the smaller subset resolved by the JWST Rayleigh criterion appears as light-blue individual components. Dynamically formed binaries are shown separately in dark red regardless of whether they are resolved or unresolved. The relative scarcity of light-blue sources compared with dark-blue sources provides a direct visual counterpart to the high unresolved fractions measured in Figure~\ref{fig:binary-resolution-summary}.
+
+The time sequence also illustrates that binary resolution changes primarily the width and normalization of the stellar sequence rather than its overall evolution. All three treatments follow the same progression through the isochrone grid as the cluster ages, while unresolved flux combination adds a persistent population displaced toward brighter magnitudes. This visual behavior is consistent with the approximately additive shift between the resolved and unresolved spread curves.
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=1.0\linewidth]
+    {science-images/fig_binary_resolution_cmd_time_evolution_f182m_f200w.png}
+    \caption{Abridged time evolution of the representative cluster in
+    $(F182M-F200W)$ versus F200W under three treatments of binary angular
+    resolution. Rows correspond to cluster times of 1, 5, and
+    10 Myr, and the same 1--20 Myr isochrone grid is shown in each panel.
+    The left column treats all binary components as resolved and plots all
+    stellar sources in black. The middle column treats all binary systems as
+    unresolved; single stars are shown in black, unresolved primordial
+    binaries in dark blue, and dynamically formed binaries in dark red.
+    The right column applies the JWST Rayleigh criterion using the XY
+    sky-plane projection. In this case, single stars are black, resolved
+    primordial binary components are light blue, unresolved primordial
+    binaries are dark blue, and dynamically formed binaries are dark red
+    regardless of their resolution state. The Rayleigh-limited population
+    visually resembles the all-unresolved limit because most binary systems
+    remain unresolved at the adopted distance of 410 pc. Also note the seldom and fleeting appearances of red points representing dynamically formed binaries, which shows how rare and short-lived such systems are in these cluster simulations.}
+    \label{fig:binary-resolution-time-evolution}
+\end{figure*}
+
+Together, Figures~\ref{fig:binary-resolution-summary} and \ref{fig:binary-resolution-time-evolution} show that unresolved multiplicity is an important systematic when interpreting the absolute value of a CMD-spread measurement. The quantitative spread curves demonstrate that binary blending produces an approximately additive offset, while the time-evolution CMDs show the stellar populations responsible for that offset. The physical trend with cluster evolution remains visible, but the observed sequence is broadened as binary components are combined into unresolved photometric sources. Consequently, synthetic and observed clusters should be compared using consistent assumptions about instrumental angular resolution and binary blending.
 
 \subsection{Dependence on Star Formation Efficiency and Cloud Surface Density}
 The ensemble results demonstrate that the diagram spread is sensitive to both principal cloud parameters explored in the simulation suite.
