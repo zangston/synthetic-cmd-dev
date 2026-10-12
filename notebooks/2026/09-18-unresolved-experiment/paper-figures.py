@@ -282,11 +282,9 @@ plt.show()
 
 TIME_EVOLUTION_TIMES_MYR = [
     1.0,
-    2.0,
     5.0,
     10.0,
-    15.0,
-    20.0,
+    15.0
 ]
 
 TIME_EVOLUTION_DIAGRAM = "f182m_f200w"
