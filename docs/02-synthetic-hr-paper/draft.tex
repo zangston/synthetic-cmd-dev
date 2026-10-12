@@ -400,37 +400,93 @@ The interpolation procedure is illustrated schematically in Figure~\ref{fig:iso-
     \label{fig:iso-interp-example}
 \end{figure}
 
-\subsection{Treatment of Binary Systems}
 
-The Nbody6 simulations include primordial binary systems. Binary stars may be represented in two limiting observational cases.
+
+
+
+\subsection{Treatment of Binary Systems}
+\label{sec:binaries}
+The Nbody6 simulations include binary systems whose observational appearance depends on whether the individual stellar components can be spatially resolved. We therefore consider both resolved and unresolved representations of binary systems when constructing synthetic CMDs.
 
 \paragraph{Resolved binaries:}
-The primary and companion are treated as independent stellar sources and are interpolated separately.
+For a resolved binary, the primary and companion are treated as independent stellar sources. Each component is interpolated separately according to its stellar mass and age and contributes an independent point to the CMD.
 
 \paragraph{Unresolved binaries:}
-The fluxes of the two components are summed before conversion back into a magnitude,
+For an unresolved binary, the primary and companion are represented as a single photometric source. The component fluxes are summed independently in each photometric band before conversion back into a magnitude. For a given filter,
+
 \begin{equation}
 F_{\rm binary}=F_1+F_2,
 \end{equation}
-and
+
+or equivalently,
+
 \begin{equation}
 m_{\rm binary}
 =
 -2.5\log_{10}
 \left(
-\frac{F_{\rm binary}}{F_0}
+10^{-0.4m_1}+10^{-0.4m_2}
 \right),
 \end{equation}
-where $F_0$ is the appropriate photometric zero-point flux.
 
-Unresolved binaries therefore appear brighter than either component individually and can introduce a secondary sequence or additional vertical width in CMD space. Figure~\ref{fig:cmd-binaries} illustrates the difference between these limiting treatments.
+apart from the common photometric zero point.
+
+The resulting combined magnitudes are then used to construct the CMD color. Because the combined source is brighter than either component individually, unresolved multiplicity can broaden the stellar sequence and alter the measured quartile-tail spread.
+
+Figure~\ref{fig:cmd-binaries} illustrates the limiting cases in which all binary systems are treated as resolved or all are treated as unresolved.
 
 \begin{figure*}
     \centering
     \includegraphics[width=1\linewidth]{science-images/fig_cmd_binaries_f162m_f182m.png}
-    \caption{Example synthetic CMDs demonstrating the effect of treating simulated binary systems as resolved individual sources or unresolved combined sources.}
+    \caption{Example synthetic CMDs demonstrating the difference between
+    treating binary systems as resolved individual stellar components and
+    unresolved combined photometric sources. In the unresolved case, the
+    primary and companion fluxes are summed before their combined magnitude
+    and color are calculated.}
     \label{fig:cmd-binaries}
 \end{figure*}
+
+
+\subsubsection{Angular-Resolution Treatment}
+\label{sec:binary-resolution-method}
+The all-resolved and all-unresolved cases provide useful limiting examples, but a real observation generally lies between these extremes. We therefore perform an additional angular-resolution experiment to estimate which binary systems would be resolved by JWST or HST for a nearby young cluster.
+
+This experiment uses a representative simulation with
+
+\begin{equation}
+M_{\rm cl}=3000\,M_\odot,
+\qquad
+\Sigma_{\rm cloud}=0.1\,{\rm g\,cm^{-2}},
+\qquad
+\epsilon_{\rm ff}=0.03,
+\end{equation}
+
+using seed 00. The experiment is intended as a test of the observational effect of binary resolution rather than as a second full ensemble analysis.
+
+The binary population is determined independently at each simulation snapshot. Thus, the calculation follows the current binary systems rather than assuming that all primordial pairs remain unchanged throughout the simulation. Binary disruption, dynamical formation, exchanges, and orbital evolution can therefore alter both the binary population and the instantaneous component separations.
+
+For each current binary, the projected separation is calculated in three orthogonal viewing directions. We refer to these as the XY, XZ, and YZ sky-plane projections. A binary is classified as unresolved when its projected separation is smaller than the angular resolution defined by the Rayleighcriterion,
+
+ 
+\begin{equation}
+\theta_{\rm R} = 1.22\frac{\lambda}{D},
+\end{equation}
+
+where $\lambda$ is the adopted observing wavelength and $D$ is the telescope primary-mirror diameter.
+
+The cluster is placed at a distance of 410 pc, approximately corresponding to the distance adopted for the Orion Nebula Cluster comparison. The angular Rayleigh limit is converted into a physical projected-separation threshold at this distance.
+
+For each CMD, the longest-wavelength filter entering the diagram is used to define the resolution limit. The JWST
+$(F070W-F200W)$ versus F200W and
+$(F182M-F200W)$ versus F200W diagrams therefore use the F200W wavelength and a telescope diameter of 6.5 m. The HST $(F555W-F814W)$ versus F814W diagram uses F814W and a telescope diameter of 2.4 m.
+
+Five binary-resolution treatments are compared at each cluster time: the all-resolved limit, the all-unresolved limit, and Rayleigh-limited observations in the XY, XZ, and YZ projections. For a pair classified as unresolved, the two stellar components are combined in flux independently in every photometric band before the CMD color is calculated. Resolved systems contribute their two stellar components independently.
+
+The same fixed CMD measurement bins and quartile-tail spread statistic described in Section~\ref{sec:spread-metric} are then applied to all five resolution treatments. The experiment is restricted to the three CMDs because spatial resolving power is an observational imaging effect rather than an intrinsic property of H--R space.
+
+
+
+
 
 \subsection{Synthetic Diagram Construction}
 
@@ -612,8 +668,41 @@ The simulation families occupy different regions of this relation because both $
     \label{fig:spread-vs-age-spread}
 \end{figure*}
 
-\subsection{Dependence on Star Formation Efficiency and Cloud Surface Density}
+\subsection{Effect of Binary Angular Resolution}
+\label{sec:binary-resolution-results}
+The limiting binary treatments shown in Figure~\ref{fig:cmd-binaries} demonstrate qualitatively that unresolved systems broaden a synthetic CMD. The angular-resolution experiment allows this effect to be quantified using a telescope-dependent observational criterion.
 
+Figure~\ref{fig:binary-resolution-summary} compares the evolution of the quartile-tail spread for the all-resolved and all-unresolved limits with the three Rayleigh-limited viewing projections. The same comparison is shown for all three CMD spaces considered in the experiment.
+
+Treating all binaries as unresolved systematically increases the measured CMD spread relative to the all-resolved case. However, the overall time dependence of the spread remains very similar between the two limiting treatments. Unresolved multiplicity therefore behaves primarily as an approximately additive offset in the spread metric rather than producing a qualitatively different temporal evolution. In other words, the underlying evolution of the stellar age distribution remains visible, but the absolute normalization of the measured CMD spread is shifted upward when binary components are combined.
+
+The realistic Rayleigh-limited cases lie substantially closer to the all-unresolved limit than to the all-resolved limit. For the representative simulation at 410 pc, approximately 70--80\% of the current binary population is unresolved over much of the analyzed interval. Because most binaries therefore contribute as combined photometric sources, the resulting CMD spread closely approaches the all-unresolved extreme.
+
+The binary-resolution result is also largely insensitive to the viewing orientation of the cluster. The XY, XZ, and YZ projections produce similar unresolved fractions and nearly overlapping spread curves. Individual binary systems can change between resolved and unresolved classifications as their projected separation changes with viewing direction and orbital evolution, but these differences have little effect on the aggregate CMD-spread measurement.
+
+This behavior is present in all three tested photometric projections:
+$(F070W-F200W)$ versus F200W,
+$(F182M-F200W)$ versus F200W, and
+$(F555W-F814W)$ versus F814W. 
+Although the numerical value of the spread and the instrumental resolution threshold differ between filter combinations, the same qualitative result is recovered in each case: unresolved binaries increase the spread, realistic angular resolution places the observation closer to the all-unresolved limit, and changing the viewing axis produces only a small effect.
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=1\linewidth]
+    {science-images/fig_binary_resolution_summary.png}
+    \caption{Effect of binary angular resolution on the measured CMD spread for the representative
+    $M_{\rm cl}=3000\,M_\odot$,
+    $\Sigma_{\rm cloud}=0.1\,{\rm g\,cm^{-2}}$,
+    $\epsilon_{\rm ff}=0.03$, seed 00 simulation.
+    The top row shows the quartile-tail spread as a function of cluster time for the all-resolved and all-unresolved limiting treatments and for Rayleigh-limited observations in the XY, XZ, and YZ sky-plane projections. The bottom row shows the corresponding fraction of current binary systems classified as unresolved. Columns correspond to
+    $(F070W-F200W)$ versus F200W, $(F182M-F200W)$ versus F200W, and $(F555W-F814W)$ versus F814W.
+    Approximately 70--80\% of binary systems are unresolved for the representative cluster at 410 pc, causing the Rayleigh-limited spread to lie substantially closer to the all-unresolved limit than to the all-resolved limit. The three viewing projections produce similar results, indicating little dependence on viewing orientation.}
+    \label{fig:binary-resolution-summary}
+\end{figure*}
+
+These results show that unresolved multiplicity is an important systematic when interpreting the absolute value of a CMD-spread measurement. The difference between resolved and unresolved treatments is comparable to a zero-point shift in the spread relation: the physical trend with cluster evolution remains, but the observed sequence is broadened by flux blending. Consequently, synthetic and observed clusters should be compared using consistent assumptions about instrumental angular resolution and binary blending.
+
+\subsection{Dependence on Star Formation Efficiency and Cloud Surface Density}
 The ensemble results demonstrate that the diagram spread is sensitive to both principal cloud parameters explored in the simulation suite.
 
 The strongest systematic ordering is associated with $\epsilon_{\rm ff}$. Lower star formation efficiencies per free-fall time correspond to more prolonged formation histories. These simulations therefore contain stars spanning a larger range of formation times and develop larger values of $\Delta t_{90}$. The increased age diversity broadens the pre--main-sequence population vertically in H--R space and produces a corresponding increase in magnitude spread in the synthetic CMDs.
@@ -628,7 +717,9 @@ The ensemble analysis establishes a forward connection between cloud-scale star-
 
 The correspondence is clearest when interpreted statistically across the simulation ensemble rather than from an individual snapshot. Stochastic differences between realizations and changes in isochrone geometry prevent the diagram width from serving as a unique one-to-one estimator of age spread at every epoch. Nevertheless, the persistence of the parameter ordering across H--R and multiple CMD projections shows that the width of the pre--main-sequence population contains measurable information about the underlying formation history.
 
-The forward-modeling framework therefore provides a basis for connecting observed CMD morphology to physically motivated cluster-formation models. A subsequent observational comparison must additionally account for extinction, photometric uncertainty, completeness, unresolved multiplicity, and field contamination, but the simulation analysis presented here establishes the intrinsic relationship that such observational effects would act upon.
+The binary-resolution experiment further demonstrates that the absolute normalization of the CMD-spread statistic depends on observational angular resolution. Unresolved binaries increase the measured spread by an approximately additive offset while leaving the broad temporal behavior largely unchanged. For the representative cluster placed at 410 pc, the majority of binary systems remain unresolved under the adopted JWST and HST Rayleigh criteria, causing the predicted spread to lie considerably closer to the all-unresolved than to the all-resolved limiting case. The weak dependence on viewing projection suggests that, for this realization, the fraction of binaries that are unresolved is substantially more important than the particular orientation from which the cluster is observed.
+
+The forward-modeling framework therefore provides a basis for connecting observed CMD morphology to physically motivated cluster-formation models. However, the absolute CMD spread cannot be interpreted solely as a measure of intrinsic stellar age spread. Quantitative comparison with an observed cluster should reproduce the relevant instrumental angular resolution and binary treatment in addition to accounting for extinction, photometric uncertainty, completeness, and field contamination. The full simulation ensemble establishes the systematic dependence of diagram spread on $\epsilon_{\rm ff}$ and $\Sigma_{\rm cloud}$, while the binary-resolution experiment identifies unresolved multiplicity as an additional observational contribution to the measured spread.
 
 
 
