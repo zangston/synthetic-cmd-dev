@@ -228,10 +228,10 @@
 Charlottesville, VA 22904, USA}
 
 \author[0000-0002-4725-7589]{Aayush Gautam}
-\affiliation{Tribhuvan University, Department of Physics \\
-Bharatpur 44207, Nepal}
 \affiliation{University of Virginia, Department of Astronomy \\
 Charlottesville, VA 22904, USA}
+\affiliation{Tribhuvan University, Department of Physics \\
+Bharatpur 44207, Nepal}
 
 \author[0000-0002-5851-2602]{Juan Farias}
 \affiliation{Chalmers University of Technology, Department of Space, Earth \& Environment \\
@@ -243,11 +243,11 @@ Austin, TX 78712, USA}
 %\affiliation{Indian Institute of Science Education and Research \\
 % Mohali, India}
 
-\author{Morten Andersen}
+\author[0000-0002-5306-4089]{Morten Andersen}
 \affiliation{European Southern Observatory \\
 München, Germany}
 
-\author{Jonathan Tan}
+\author[0000-0002-3389-9142]{Jonathan C. Tan}
 \affiliation{University of Virginia, Department of Astronomy \\
 Charlottesville, VA 22904, USA}
 \affiliation{Chalmers University of Technology, Department of Space, Earth \& Environment \\
@@ -319,7 +319,7 @@ The forward-modeling pipeline combines protocluster simulations from \citet{Fari
 
 \subsection{Protocluster Simulations}
 
-We utilize Nbody6 simulations presented in \citet{Farias2019}, which model the gradual formation of embedded star clusters within collapsing molecular clouds. The present analysis is restricted to the simulation suite with an initial clump mass of $M_{\rm cl}=3000\,M_\odot$. These simulations adopt a Kroupa initial mass function and include primordial binary systems.
+We utilize Nbody6 simulations presented in \citet{Farias2019}, which model the gradual formation of embedded star clusters within collapsing molecular clouds. The primary ensemble analysis is performed using the simulation suite with an initial clump mass of $M_{\rm cl}=3000\,M_\odot$, with additional targeted cluster-mass sensitivity tests performed using simulations with $M_{\rm cl}=300$, $3000$, and $30000\,M_\odot$. The mass comparison holds a constant $\epsilon_{\rm ff}=0.03$, and is evaluated separately at both $\Sigma_{\rm cloud}=0.1$ and $1.0\,{\rm g\,cm^{-2}}$. All of the aforementioned simulations adopt a Kroupa initial mass function and include primordial binary systems.
 
 The primary cloud-scale parameters considered here are the cloud surface density $\Sigma_{\rm cloud}$ and the star formation efficiency per free-fall time $\epsilon_{\rm ff}$. The parameter $\epsilon_{\rm ff}$ regulates how rapidly stars are introduced relative to the free-fall time of the parent cloud. Lower values therefore produce more extended star-formation histories, while larger values approach increasingly rapid formation. The cloud surface density also changes the dynamical and formation timescales of the protocluster and consequently affects the stellar age distribution.
 
@@ -328,7 +328,7 @@ At a specified cluster time $t_{\rm cl}$, an Nbody6 snapshot is converted into a
 \subsection{Simulation Parameter Grid}
 \label{sec:simulation-grid}
 
-For the adopted initial clump mass of $M_{\rm cl}=3000\,M_\odot$, the simulation suite spans two cloud surface densities,
+For the adopted initial clump mass of $M_{\rm cl}=3000\,M_\odot$, the primary simulation suite spans two cloud surface densities,
 \begin{equation}
 \Sigma_{\rm cloud}
 =
@@ -369,7 +369,7 @@ For ensemble measurements, all 20 realizations of a given $(\Sigma_{\rm cloud},\
 \enddata
 \end{deluxetable}
 
-All results presented in this work are based on the $M_{\rm cl}=3000\,M_\odot$ simulation suite. Dependence on initial clump mass is reserved for future analysis.
+The full ensemble analysis presented in this work is based on the $M_{\rm cl}=3000\,M_\odot$ simulation suite. The additional $M_{\rm cl}=300$ and $30000\,M_\odot$ simulations are used only for the controlled mass-dependence experiment described below and are not incorporated into the multi-seed ensemble statistics.
 
 \subsection{Isochrone Grid Construction}
 
@@ -377,16 +377,16 @@ Synthetic stellar populations are generated using SPISEA \citep{Hosek2020}. The 
 
 The isochrone grid spans ages from 1 to 20 Myr in intervals of 0.5 Myr. We assume solar metallicity, zero extinction ($A_{K_s}=0$), and a distance of 410 pc. The same stellar-evolution and photometric assumptions are held fixed throughout the simulation ensemble so that changes in diagram morphology arise from changes in the underlying simulated stellar population rather than from changes in the synthetic-observation model.
 
-Photometry is generated in the JWST F070W, F182M, and F200W filters and the HST F555W and F814W filters. These bands permit construction of several CMD projections with substantially different isochrone geometries.
+Photometry is generated in the JWST F070W, F182M, and F200W filters and the HST F555W and F814W filters. These bands permit the construction of several CMD projections with substantially different isochrone geometries.
 
 \subsection{Photometric Interpolation}
 
-For each simulated star with mass $m$ and age $a$, stellar parameters and photometric magnitudes are obtained by interpolation within the isochrone grid. For ages lying between two grid points, the procedure is:
+For each simulated star with mass $m$ and age $a$, stellar parameters and photometric magnitudes are obtained by bilinear interpolation within the isochrone grid. For a 1--20 Myr, 0.01--120 $M_\odot$ age--mass pair:
 
 \begin{enumerate}
-    \item identify the two isochrones whose ages bracket $a$;
+    \item identify the two grid isochrones whose ages bracket $a$;
     \item interpolate in stellar mass along each bracketing isochrone;
-    \item interpolate between the two mass-interpolated points in age.
+    \item interpolate in age between the two mass-interpolated points.
 \end{enumerate}
 
 The resulting stellar properties include effective temperature, luminosity, surface gravity, and magnitudes in all selected filters. Stars younger than the minimum age represented by the stellar-evolution grid are evaluated at the youngest available grid age, while stars outside the supported upper age range are excluded.
@@ -412,7 +412,7 @@ The Nbody6 simulations include binary systems whose observational appearance dep
 For a resolved binary, the primary and companion are treated as independent stellar sources. Each component is interpolated separately according to its stellar mass and age and contributes an independent point to the CMD.
 
 \paragraph{Unresolved binaries:}
-For an unresolved binary, the primary and companion are represented as a single photometric source. The component fluxes are summed independently in each photometric band before conversion back into a magnitude. For a given filter,
+For an unresolved binary, the primary and companion are represented as a single photometric source. Each component is interpolated separately, then the components have their magnitude brightnesses independently converted to fluxes, which are then summed in each photometric band before converting back to the magnitude scale. For a given filter,
 
 \begin{equation}
 F_{\rm binary}=F_1+F_2,
@@ -431,18 +431,14 @@ m_{\rm binary}
 
 apart from the common photometric zero point.
 
-The resulting combined magnitudes are then used to construct the CMD color. Because the combined source is brighter than either component individually, unresolved multiplicity can broaden the stellar sequence and alter the measured quartile-tail spread.
+The resulting combined magnitudes are then used to construct the CMD color. Because the combined source is brighter than either component individually, unresolved multiplicity can broaden the stellar sequence and alter the measured quartile-tail spread, as explained in subsequent subsections.
 
 Figure~\ref{fig:cmd-binaries} illustrates the limiting cases in which all binary systems are treated as resolved or all are treated as unresolved.
 
 \begin{figure*}
     \centering
     \includegraphics[width=1\linewidth]{science-images/fig_cmd_binaries_f162m_f182m.png}
-    \caption{Example synthetic CMDs demonstrating the difference between
-    treating binary systems as resolved individual stellar components and
-    unresolved combined photometric sources. In the unresolved case, the
-    primary and companion fluxes are summed before their combined magnitude
-    and color are calculated.}
+    \caption{Example synthetic CMDs demonstrating the difference between treating binary systems as resolved individual stellar components and unresolved combined photometric sources. In the unresolved case, the primary and companion fluxes are summed before their combined magnitude and color are calculated. The presence of unresolved binary systems, due to their nature as being a combined light source, results in the apparent effect of a wider spread along the vertical axis.}
     \label{fig:cmd-binaries}
 \end{figure*}
 
@@ -465,7 +461,7 @@ using seed 00. The experiment is intended as a test of the observational effect 
 
 The binary population is determined independently at each simulation snapshot. Thus, the calculation follows the current binary systems rather than assuming that all primordial pairs remain unchanged throughout the simulation. Binary disruption, dynamical formation, exchanges, and orbital evolution can therefore alter both the binary population and the instantaneous component separations.
 
-For each current binary, the projected separation is calculated in three orthogonal viewing directions. We refer to these as the XY, XZ, and YZ sky-plane projections. A binary is classified as unresolved when its projected separation is smaller than the angular resolution defined by the Rayleighcriterion,
+For each current binary, the projected separation is calculated in three orthogonal viewing directions. We refer to these as the XY, XZ, and YZ sky-plane projections. A binary is classified as unresolved when its projected separation is smaller than the angular resolution defined by the Rayleigh criterion,
 
  
 \begin{equation}
@@ -474,7 +470,7 @@ For each current binary, the projected separation is calculated in three orthogo
 
 where $\lambda$ is the adopted observing wavelength and $D$ is the telescope primary-mirror diameter.
 
-The cluster is placed at a distance of 410 pc, approximately corresponding to the distance adopted for the Orion Nebula Cluster comparison. The angular Rayleigh limit is converted into a physical projected-separation threshold at this distance.
+The cluster is placed at a distance of 410 pc, approximately corresponding to the distance adopted for the Orion Nebula Cluster comparison. The angular Rayleigh limit is converted into a physical projected-separation threshold at this distance. 
 
 For each CMD, the longest-wavelength filter entering the diagram is used to define the resolution limit. The JWST
 $(F070W-F200W)$ versus F200W and
@@ -483,6 +479,8 @@ $(F182M-F200W)$ versus F200W diagrams therefore use the F200W wavelength and a t
 Five binary-resolution treatments are compared at each cluster time: the all-resolved limit, the all-unresolved limit, and Rayleigh-limited observations in the XY, XZ, and YZ projections. For a pair classified as unresolved, the two stellar components are combined in flux independently in every photometric band before the CMD color is calculated. Resolved systems contribute their two stellar components independently.
 
 The same fixed CMD measurement bins and quartile-tail spread statistic described in Section~\ref{sec:spread-metric} are then applied to all five resolution treatments. The experiment is restricted to the three CMDs because spatial resolving power is an observational imaging effect rather than an intrinsic property of H--R space.
+
+Our usage of the Rayleigh criterion to only consider bound binaries has the caveat that we neglect to consider gravitationally unbound, apparent unresolved binaries. Doing so would involve devising a searching algorithm that would draw annuli around each star in the sky plane projection according to the Rayleigh threshold. This approach would account for all orders of unresolved multiplicity (i.e., binaries, triples, and above); however, doing so would require convolving the stellar population with the point-spread function of the longest filter considered in the photometric analysis. Distant background stars would also need to be considered alongside the PSF convolution. Since the focus of this paper is not on synthetic image generation, and the simulations used only include binaries, these edge-case considerations are largely beyond the scope of this work.
 
 
 
@@ -493,7 +491,13 @@ The same fixed CMD measurement bins and quartile-tail spread statistic described
 For every interpolated stellar population, we construct both theoretical H--R diagrams and synthetic CMDs. The H--R representation uses $T_{\rm eff}$ versus $\log_{10}(L/L_\odot)$,
 while photometric colors are formed from differences between synthetic magnitudes.
 
-The complete ensemble analysis considers the following three CMD spaces: (F070W-F200W) versus F200W, (F182M-F200W) versus F200W, and (F555W-F814W. versus F814W.
+The complete ensemble analysis considers the following three CMD spaces: 
+
+\begin{enumerate}
+    \item (F070W-F200W) versus F200W, 
+    \item (F182M-F200W) versus F200W,
+    \item (F555W-F814W) versus F814W.
+\end{enumerate}
 
 Together with the H--R diagram, these projections allow us to determine whether trends present in physical stellar-parameter space remain visible after transformation into observable photometric space.
 
@@ -580,6 +584,24 @@ For each $(\Sigma_{\rm cloud},\epsilon_{\rm ff})$ family, the measurements from 
 
 This ensemble treatment separates systematic trends with the cloud parameters from stochastic differences between individual realizations and allows the dependence of diagram morphology on $\epsilon_{\rm ff}$ and $\Sigma_{\rm cloud}$ to be evaluated across the complete simulation grid.
 
+\subsection{Cluster-Mass Sensitivity Test}
+\label{sec:mass-test}
+
+In addition to the primary $M_{\rm cl}=3000\,M_\odot$ ensemble analysis, we perform a targeted experiment to isolate the effect of initial cluster mass on the evolution of diagram spread. We compare simulations with
+
+\begin{equation}
+    M_{\rm cl} = 300,\ 3000,\ 30000\,M_\odot
+\end{equation}
+
+while fixing the star formation efficiency per free-fall time to $\epsilon_{\rm ff}=0.03$.
+
+The comparison is performed independently for $\Sigma_{\rm cloud}=0.1$ and $1.0\,{\rm g\,cm^{-2}}$.
+
+For each mass and surface density, one representative simulation realization is analyzed using the same stellar interpolation, diagram definitions, measurement region, and quartile-tail spread statistic used in the primary ensemble analysis. The purpose of this experiment is therefore not to measure the ensemble distribution at each cluster mass, but to determine whether a first-order systematic change in diagram morphology occurs when the mass scale of the forming cluster is varied while the other principal formation parameters are held fixed.
+
+A single realization is used at each mass because the number of available simulations differs substantially between the three mass suites. For each $(\Sigma_{\rm cloud},\epsilon_{\rm ff})$ combination, the $300\,M_\odot$ suite contains 200 realizations, the $3000\,M_\odot$ suite contains 20, and the $30000\,M_\odot$ suite contains only two. An all-realization comparison would therefore have strongly unequal sampling precision between the three mass scales. Conversely, restricting every mass to only two realizations would discard most of the available sampling at lower masses while still providing only a weak estimate of the realization variance at $30000\,M_\odot$.
+
+We consequently interpret the cluster-mass comparison as a qualitative sensitivity test rather than an ensemble measurement and do not attach realization-to-realization uncertainty bands to these curves. This treatment is also motivated by the relatively modest seed-to-seed scatter measured in the $3000\,M_\odot$ ensemble compared with the systematic differences observed between the three cluster masses.
 
 \section{Results \& Analysis} \label{sec:results}
 
@@ -591,7 +613,7 @@ Figure~\ref{fig:representative-cluster} shows a representative simulated cluster
 
 \begin{figure}
     \centering
-    \includegraphics[width=1\linewidth]{science-images/fig_representative_cluster_f182m_f200w.png}
+    \includegraphics[width=1.0\linewidth]{science-images/fig_representative_cluster_f182m_f200w.png}
     \caption{Representative synthetic cluster in $(F182M-F200W)$ versus F200W space, overlaid on the 1--20 Myr isochrone grid. Isochrones are colored by age using the same color scale adopted throughout the diagram-geometry figures.}
     \label{fig:representative-cluster}
 \end{figure}
@@ -698,7 +720,7 @@ Although the numerical value of the spread and the instrumental resolution thres
     $(F070W-F200W)$ versus F200W,
     $(F182M-F200W)$ versus F200W, and
     $(F555W-F814W)$ versus F814W.
-    Approximately 70--80\% of binary systems are unresolved for the representative cluster at 410 pc, causing the Rayleigh-limited spread to lie substantially closer to the all-unresolved limit than to the all-resolved limit. The three viewing projections produce similar results, indicating little dependence on viewing orientation.}
+    Approximately 70--80\% of binary systems are unresolved for the representative cluster at 410 pc, causing the Rayleigh-limited spread to lie substantially closer to the all-unresolved limit than to the all-resolved limit. The three viewing projections produce similar results, indicating little dependence on viewing orientation. \textbf{\textcolor{red}{INCREASE FONT SIZE ON THIS FIGURE}}}
     \label{fig:binary-resolution-summary}
 \end{figure*}
 
@@ -728,7 +750,7 @@ The time sequence also illustrates that binary resolution changes primarily the 
     binaries are dark blue, and dynamically formed binaries are dark red
     regardless of their resolution state. The Rayleigh-limited population
     visually resembles the all-unresolved limit because most binary systems
-    remain unresolved at the adopted distance of 410 pc. Also note the seldom and fleeting appearances of red points representing dynamically formed binaries, which shows how rare and short-lived such systems are in these cluster simulations.}
+    remain unresolved at the adopted distance of 410 pc. Also note the seldom and fleeting appearances of red points representing dynamically formed binaries, which shows how rare and short-lived such systems are in these cluster simulations. \textbf{\textcolor{red}{INCREASE LEGEND FONT SIZE ON THIS FIGURE}}}
     \label{fig:binary-resolution-time-evolution}
 \end{figure*}
 
@@ -743,9 +765,33 @@ Cloud surface density modifies the same relationship. At otherwise fixed $\epsil
 
 These trends are recovered after averaging over the full 20-seed ensembles and are therefore not attributable to a particular stochastic sampling of the stellar initial mass function. Individual realizations exhibit significant scatter, particularly at some cluster ages and in some photometric projections, but the ordering of the ensemble means remains systematic.
 
+\subsection{Dependence on Cluster Mass}
+\label{sec:mass-results}
+
+The primary ensemble analysis holds the initial cluster mass fixed at $M_{\rm cl}=3000\,M_\odot$. To determine whether the characteristic spread also depends on the mass scale of the forming system, we repeat the time-dependent spread analysis for representative $M_{\rm cl}=300$, $3000$, and $30000\,M_\odot$ simulations at fixed $\epsilon_{\rm ff}=0.03$. Figure~\ref{fig:mass-spread-evolution} shows the result for both cloud surface densities in H--R space and in the three CMD projections.
+
+A systematic dependence on cluster mass is visible in both surface-density environments. Increasing $M_{\rm cl}$ shifts the development of the diagram spread toward later cluster times and generally allows the population to reach a larger maximum spread. The $300\,M_\odot$ simulations develop and reach their characteristic maximum spread earliest, the $3000\,M_\odot$ models evolve on an intermediate timescale, and the $30000\,M_\odot$ simulations continue building a broad stellar population for substantially longer.
+
+This behavior follows naturally from the formation timescales of the underlying simulation models. At fixed $\Sigma_{\rm cloud}$ and $\epsilon_{\rm ff}$, increasing the total clump mass increases the characteristic time required to assemble the stellar population. Star formation therefore remains active for a longer absolute time in the more massive systems. Because stars continue to be introduced over this extended interval, the stellar population develops a larger absolute age spread before formation terminates, which in turn produces a broader vertical distribution in both H--R and CMD space.
+
+The mass dependence is therefore conceptually distinct from the
+$\epsilon_{\rm ff}$ dependence even though both act through the duration of star formation. Lowering $\epsilon_{\rm ff}$ prolongs star formation by reducing the rate at which gas is converted into stars per free-fall time, whereas increasing $M_{\rm cl}$ lengthens the characteristic physical formation timescale of the system at otherwise fixed parameters. Both effects can consequently increase the absolute stellar age spread and delay the time at which the maximum diagram spread is reached.
+
+The same qualitative ordering appears at both $\Sigma_{\rm cloud}=0.1$ and $1.0\,{\rm g\,cm^{-2}}$, although the absolute timescales remain shorter for the higher-surface-density models. The consistency of the trend across the H--R diagram and all three CMD projections indicates that the mass dependence is not produced by a particular photometric transformation.
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=1\linewidth]
+    {science-images/spread_evolution_both_sigmas.png}
+    \caption{Evolution of the quartile-tail diagram spread for representative $M_{\rm cl}=300$, $3000$, and $30000\,M_\odot$ simulations at fixed $\epsilon_{\rm ff}=0.03$. Results are shown for both $\Sigma_{\rm cloud}=0.1$ and $1.0\,{\rm g\,cm^{-2}}$ and for the H--R diagram and three CMD projections used in the main analysis. Each curve represents one simulation realization rather than an ensemble average. Increasing cluster mass shifts the development and peak of the diagram spread toward later times and generally produces a larger maximum spread, reflecting the longer formation timescale of the more massive clusters. \textbf{\textcolor{red}{INCREASE FONT SIZE ON THIS FIGURE}}}
+    \label{fig:mass-spread-evolution}
+\end{figure*}
+
+The individual CMD evolution underlying these spread curves is shown in Appendix~\ref{app:mass-cmd-evolution}. In the more massive simulations, the stellar population remains distributed across a broader range of isochrone ages for a longer interval, visually demonstrating the extended formation history responsible for the delayed and enhanced spread.
+
 \subsection{Implications for Synthetic CMD Diagnostics}
 
-The ensemble analysis establishes a forward connection between cloud-scale star-formation parameters, intrinsic stellar age distributions, and observable diagram morphology. In the simulation suite considered here, we find that a lower freefall parameter $\epsilon_{\rm ff}$ (i.e., lower star-forming efficient) and lower cloud density $\Sigma_{cloud}$ both independently contribute to a larger age spread $\Delta_{90}$, and transitively a larger diagram spread.
+The ensemble and sensitivity analyses establish a forward connection between cloud-scale star-formation parameters, cluster mass, intrinsic stellar age distributions, and observable diagram morphology. In the simulations considered here, lower $\epsilon_{\rm ff}$ and lower $\Sigma_{\rm cloud}$ both produce more extended star-formation histories and larger diagram spreads. The cluster-mass experiment additionally shows that, at fixed $\epsilon_{\rm ff}$ and $\Sigma_{\rm cloud}$, increasing $M_{\rm cl}$ lengthens the absolute formation timescale, delays the peak in diagram spread, and generally allows a larger maximum spread to develop. Thus, CMD or H--R diagram width should not be interpreted as depending on a single cluster-formation parameter in isolation.
 
 The correspondence is clearest when interpreted statistically across the simulation ensemble rather than from an individual snapshot. Stochastic differences between realizations and changes in isochrone geometry prevent the diagram width from serving as a unique one-to-one estimator of age spread at every epoch. Nevertheless, the persistence of the parameter ordering across H--R and multiple CMD projections shows that the width of the pre--main-sequence population contains measurable information about the underlying formation history.
 
@@ -795,17 +841,37 @@ placeholder conclusion
 
 \appendix
 
-\section{Appendix information}
+\section{Cluster-Mass CMD Evolution}
+\label{app:mass-cmd-evolution}
 
-Appendices can be broken into separate sections just like in the main text.
-The only difference is that each appendix section is indexed by a letter
-(A, B, C, etc.) instead of a number.  Likewise numbered equations have
-the section letter appended.  Here is an equation as an example.
-\begin{equation}
-I = \frac{1}{1 + d_{1}^{P (1 + d_{2} )}}
-\end{equation}
-Appendix tables and figures should not be numbered like equations. Instead
-they should continue the sequence from the main article body.
+Figures~\ref{fig:mass-cmd-low-sigma} and
+\ref{fig:mass-cmd-high-sigma} show the underlying CMD evolution for the
+cluster-mass sensitivity experiment described in
+Section~\ref{sec:mass-test}. The comparison is restricted to
+$(F182M-F200W)$ versus F200W and $\epsilon_{\rm ff}=0.03$.
+
+These diagrams provide the visual counterpart to the spread evolution shown
+in Figure~\ref{fig:mass-spread-evolution}. At fixed cloud surface density,
+the more massive clusters remain distributed across a wider range of
+pre--main-sequence isochrones for a longer period of time. The characteristic
+broadening and subsequent contraction of the sequence therefore occur later
+as $M_{\rm cl}$ increases.
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=1\linewidth]
+    {science-images/cmd_evolution_f182m_f200w_sigma0p1.png}
+    \caption{Time evolution of the $(F182M-F200W)$ versus F200W CMD for representative $M_{\rm cl}=300$, $3000$, and $30000\,M_\odot$ simulations with $\epsilon_{\rm ff}=0.03$ and $\Sigma_{\rm cloud}=0.1\,{\rm g\,cm^{-2}}$. The more massive simulations form their stellar populations over longer absolute timescales, causing the CMD to remain broadly distributed across the pre--main-sequence isochrones for a correspondingly longer interval. \textbf{\textcolor{red}{INCREASE FONT SIZE ON THIS FIGURE}}}
+    \label{fig:mass-cmd-low-sigma}
+\end{figure*}
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=1\linewidth]
+    {science-images/cmd_evolution_f182m_f200w_sigma1p0.png}
+    \caption{Same as Figure~\ref{fig:mass-cmd-low-sigma}, but for $\Sigma_{\rm cloud}=1.0\,{\rm g\,cm^{-2}}$. The absolute formation timescales are shorter than in the lower-surface-density models, but the same ordering with cluster mass remains visible: larger $M_{\rm cl}$ delays the evolution of the CMD and the time at which its largest vertical spread is reached. \textbf{\textcolor{red}{INCREASE FONT SIZE ON THIS FIGURE}}}
+    \label{fig:mass-cmd-high-sigma}
+\end{figure*}
 
 %% For this sample we use BibTeX plus aasjournals.bst to generate the
 %% the bibliography. The sample631.bib file was populated from ADS. To
