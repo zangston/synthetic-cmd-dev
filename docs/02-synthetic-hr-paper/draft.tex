@@ -317,28 +317,27 @@ Stellar populations (1622)
 %% tied to the reference list via symbolic KEYs. The KEY corresponds
 %% to the KEY in the \bibitem in the reference list below. 
 
+
 \section{Introduction}
 \label{sec:intro}
 
-The formation of stellar clusters is a fundamental component of the star-formation process in galaxies, linking the physical evolution of molecular clouds to the properties of stellar populations. Most stars form in clustered or spatially associated environments, where their evolution is influenced by the dynamical conditions of their parent clouds, as well as interactions with neighboring stars. Therefore, understanding how these systems assemble therefore connecting the physical conditions of star-forming molecular clouds to the observable properties of the stellar populations that they produce.
+The formation of stellar clusters is a fundamental component of the star-formation process in galaxies, linking the physical evolution of molecular clouds to the properties of stellar populations. Most stars form in clustered or spatially associated environments, where their evolution is influenced by the dynamical conditions of their parent clouds, as well as interactions with neighboring stars \citep{LadaLada2003,Krumholz2019}. Therefore, understanding how these systems assemble therefore connecting the physical conditions of star-forming molecular clouds to the observable properties of the stellar populations that they produce.
 
-An important question in cluster formation is the timescale over which a stellar population assembles. Star formation may occur relatively rapidly, producing a population whose members have nearly identical ages, or proceed over an extended interval, producing a cluster containing stars with a substantial disparity of formation times. The duration of star formation is expected to depend on the physical properties of the parent molecular cloud, including its density, freefall timescale, and efficiency of converting gas into stars. Consequently, measurements of stellar age distributions provide a potential means of constraining the physical processes governing cluster formation.
+An important question in cluster formation is the timescale over which a stellar population assembles. Star formation may occur relatively rapidly, producing a population whose members have nearly identical ages, or proceed over an extended interval, producing a cluster containing stars with a substantial disparity of formation times. The duration of star formation is expected to depend on the physical properties of the parent molecular cloud, including its density, freefall timescale, and efficiency of converting gas into stars \citep{McKeeOstriker2007,KrumholzTan2007}. Consequently, measurements of stellar age distributions provide a potential means of constraining the physical processes governing cluster formation.
 
-Directly determining the formation history of a young stellar cluster from observations, however, presents several challenges. Individual stellar ages are generally inferred by comparing observed stellar properties with theoretical evolutionary models. This comparison is commonly performed using Hertzsprung--Russell (H--R) diagrams or color--magnitude diagrams (CMDs), in which the observed stellar population is compared with theoretical isochrone curves. The location of a star relative to these isochrones provides an estimate of its evolutionary state and, under appropriate assumptions, its age.
+Directly determining the formation history of a young stellar cluster from observations, however, presents several challenges. Individual stellar ages are generally inferred by comparing observed stellar properties with theoretical evolutionary models \citep{Soderblom2010}. This comparison is commonly performed using Hertzsprung--Russell (H--R) diagrams or color--magnitude diagrams (CMDs), in which the observed stellar population is compared with theoretical isochrone curves \citep{Hillenbrand2008}. The location of a star relative to these isochrones provides an estimate of its evolutionary state and, under appropriate assumptions, its age.
 
-The interpretation of these diagrams is complicated by the fact that stars of different ages do not occupy completely distinct regions of parameter space. During pre--main-sequence evolution, changes in stellar luminosity and effective temperature produce age-dependent shifts in the stellar sequence. A population containing stars formed over a range of times may therefore occupy a broader region of an H--R diagram or CMD than a coeval population. In principle, this broadening provides an observational signature of an extended star-formation history. Nevertheless, the width of a stellar sequence is not determined by age spread alone. The geometry of pre--main-sequence evolutionary tracks changes with age, and the transformation from effective temperature and luminosity into observable photometric magnitudes and colors introduces additional nonlinearities. As a result, the same intrinsic age distribution may produce different apparent widths in different CMD projections. 
+The interpretation of these diagrams is complicated by the fact that stars of different ages do not occupy completely distinct regions of parameter space. During pre--main-sequence evolution, changes in stellar luminosity and effective temperature produce age-dependent shifts in the stellar sequence. A population containing stars formed over a range of times may therefore occupy a broader region of an H--R diagram or CMD than a coeval population. In principle, this broadening provides an observational signature of an extended star-formation history \citep{Hillenbrand2008,Reggiani2011}. Nevertheless, the width of a stellar sequence is not determined by age spread alone. The geometry of pre--main-sequence evolutionary tracks changes with age, and the transformation from effective temperature and luminosity into observable photometric magnitudes and colors introduces additional nonlinearities \citep{Bell2012,PecautMamajek2013}. As a result, the same intrinsic age distribution may produce different apparent widths in different CMD projections.
 
-Observational effects introduce further complications. For example, in unresolved binary systems, the combined light of multiple stellar components are attributed to a single photometric source. These systems can appear brighter than individual stars of comparable mass and age, broadening the observed stellar sequence even without an increase in the intrinsic age spread. Additionally, effects such as extinction, photometric uncertainty, incompleteness, and background contamination can introduce additional CMD/H--R scatter. Therefore, distinguishing these contributions from the broadening produced by an extended star-formation history is essential when interpreting observed young clusters.
+Observational effects introduce further complications. For example, in unresolved binary systems, the combined light of multiple stellar components are attributed to a single photometric source. These systems can appear brighter than individual stars of comparable mass and age, broadening the observed stellar sequence even without an increase in the intrinsic age spread \citep{HurleyTout1998,DaRio2010}. Additionally, effects such as extinction, photometric uncertainty, incompleteness, and background contamination can introduce additional CMD/H--R scatter \citep{DaRio2010,Reggiani2011}. Therefore, distinguishing these contributions from the broadening produced by an extended star-formation history is essential when interpreting observed young clusters.
 
-A useful approach to investigating these effects is forward modeling, in which a physically motivated simulation of cluster formation is transformed into the same observable parameter space used to study real stellar populations. Rather than inferring stellar ages independently from an observed diagram, forward modeling begins with a simulated population whose stellar masses, formation times, and dynamical history are known. Stellar-evolution models can then be used to predict the effective temperatures, luminosities, and photometric magnitudes of the simulated stars at successive stages of cluster evolution.
+A useful approach to investigating these effects is forward modeling, in which a physically motivated simulation of cluster formation is transformed into the same observable parameter space used to study real stellar populations \citep{DaRio2010,Masegian2021}. Rather than inferring stellar ages independently from an observed diagram, forward modeling begins with a simulated population whose stellar masses, formation times, and dynamical history are known. Stellar-evolution models can then be used to predict the effective temperatures, luminosities, and photometric magnitudes of the simulated stars at successive stages of cluster evolution.
 
 This approach provides a direct connection between the physical parameters controlling cluster formation and the resulting stellar diagram morphology. It also permits controlled experiments in which individual formation parameters or observational assumptions are varied while other aspects of the stellar population are held fixed. By examining how the synthetic diagrams respond to these changes, one can determine which morphological features are associated with the underlying star-formation history and which arise from the choice of photometric representation or observational treatment.
 
-In this work, we investigate the relationship between protocluster formation histories and synthetic H--R and CMD morphology using numerical simulations of forming stellar clusters. We combine the Nbody6 protocluster simulations of \citet{Farias2019} with stellar-evolution models and synthetic photometry generated using SPISEA \citep{Hosek2020}. Building on the luminosity-spread analysis of \citet{Masegian2021} and the synthetic CMD framework developed by \citet{Zhang2024}, we examine how the vertical extent of the pre--main-sequence stellar population responds to changes in the physical conditions of cluster formation. The principal objective of this study is to establish how the physical parameters and formation histories of simulated protoclusters are reflected in the morphology of their synthetic stellar diagrams. 
+In this work, we investigate the relationship between protocluster formation histories and synthetic H--R and CMD morphology using numerical simulations of forming stellar clusters. We combine the Nbody6 protocluster simulations of \citet{Farias2019} with stellar-evolution models and synthetic photometry generated using SPISEA \citep{Hosek2020}. Building on the luminosity-spread analysis of \citet{Masegian2021} and the synthetic CMD framework developed by \citet{Zhang2024}, we examine how the vertical extent of the pre--main-sequence stellar population responds to changes in the physical conditions of cluster formation. The principal objective of this study is to establish how the physical parameters and formation histories of simulated protoclusters are reflected in the morphology of their synthetic stellar diagrams.
 
 The remainder of this paper is organized as follows. Section~\ref{sec:related} reviews the numerical and synthetic-photometry studies upon which this work builds. Section~\ref{sec:methods} describes the protocluster simulations, stellar interpolation, synthetic diagram construction, and morphology measurements. Section~\ref{sec:results} presents the evolution of intrinsic stellar age spreads and synthetic diagram widths, their dependence on cluster-formation parameters, and the effects of binary angular resolution. Finally, Section~\ref{sec:conclusion} summarizes the principal findings and discusses their implications for interpreting observed young stellar populations.
-
-\textcolor{red}{AG: Introduction should probably end here. Also add relevant references to the whole Introduction section. Essentially, a literature review of what has been done before.} 
 
 
 
@@ -346,15 +345,7 @@ The remainder of this paper is organized as follows. Section~\ref{sec:related} r
 
 \section{Related Work}\label{sec:related}
 
-\textcolor{red}{AG: Shorten this section and move and spread it across the relevant subsections of Methods.}
-
-The formation and early evolution of star clusters have been explored extensively through numerical simulations that couple gravitational dynamics with prescriptions for star formation. In particular, \citet{Farias2019} present Nbody6 simulations of protoclusters forming within collapsing molecular clouds, demonstrating that the cloud surface density and star formation efficiency per freefall time ($\epsilon_{\mathrm{ff}}$) regulate both the duration of star formation and the resulting stellar age spread. These simulations provide a physically motivated link between cloud-scale properties and observable stellar populations.
-
-Synthetic diagram modeling has previously been used to connect such simulations to observable parameter spaces. \citet{Masegian2021} generated synthetic Hertzsprung–Russell (H–R) diagrams by interpolating stellar masses and ages from cluster simulations onto theoretical isochrones, quantifying the relationship between age spread and luminosity dispersion. That work established that luminosity spread in H–R space is positively correlated with the underlying stellar age spread induced by extended star formation histories.
-
-Extending this approach into observable photometric space, \citet{Zhang2024} implemented a forward-modeling framework that combined Nbody6 simulation outputs with synthetic photometry from SPISEA \citep{Hosek2020} to generate color–magnitude diagrams (CMDs) of forming protoclusters. That study demonstrated that magnitude spread in CMD space similarly traces stellar age spread and therefore encodes information about the parent cloud’s collapse timescale and density.
-
-Together, these prior works establish a forward relationship between cloud physics, stellar age spread, and diagram morphology. The present study builds upon these foundations by further developing the synthetic CMD framework, examining its behavior across multiple photometric representations, and quantifying how CMD morphology reflects the underlying star formation history of a protocluster.
+Previous studies have linked cloud conditions and stellar formation timescales to the age distributions and synthetic diagram morphology of young clusters \citep{Farias2019,Masegian2021,Zhang2024}. The relevant simulation and diagram-analysis methods are discussed in the subsections below.
 
 \section{Methods} \label{sec:methods}
 
@@ -370,7 +361,7 @@ We additionally investigate two effects that extend beyond the primary parameter
 
 We utilize Nbody6 simulations presented in \citet{Farias2019}, which model the gradual formation of embedded star clusters within collapsing molecular clouds. The primary ensemble analysis is performed using the simulation suite with an initial clump mass of $M_{\rm cl}=3000\,M_\odot$, with additional targeted cluster-mass sensitivity tests performed using simulations with $M_{\rm cl}=300$, $3000$, and $30000\,M_\odot$. The mass comparison holds a constant $\epsilon_{\rm ff}=0.03$, and is evaluated separately at both $\Sigma_{\rm cloud}=0.1$ and $1.0\,{\rm g\,cm^{-2}}$. All of the aforementioned simulations adopt a Kroupa initial mass function and include primordial binary systems.
 
-The primary cloud-scale parameters considered here are the cloud surface density $\Sigma_{\rm cloud}$ and the star formation efficiency per free-fall time $\epsilon_{\rm ff}$. The parameter $\epsilon_{\rm ff}$ regulates how rapidly stars are introduced relative to the free-fall time of the parent cloud. Lower values therefore produce more extended star-formation histories, while larger values approach increasingly rapid formation. The cloud surface density also changes the dynamical and formation timescales of the protocluster and consequently affects the stellar age distribution.
+The primary cloud-scale parameters considered here are the cloud surface density $\Sigma_{\rm cloud}$ and the star formation efficiency per free-fall time $\epsilon_{\rm ff}$. The parameter $\epsilon_{\rm ff}$ regulates how rapidly stars are introduced relative to the free-fall time of the parent cloud. Lower values therefore produce more extended star-formation histories, while larger values approach increasingly rapid formation. The cloud surface density also changes the dynamical and formation timescales of the protocluster and consequently affects the stellar age distribution. This connection between the cloud parameters, formation duration, and stellar age spread was demonstrated by \citet{Farias2019}.
 
 At a specified cluster time $t_{\rm cl}$, an Nbody6 snapshot is converted into a stellar population containing the masses and ages of the stars present at that epoch. These quantities form the input to the stellar-evolution and synthetic-photometry interpolation described below.
 
@@ -424,7 +415,7 @@ For ensemble measurements, all 20 realizations of a given $(\Sigma_{\rm cloud},\
 
 \subsection{Isochrone Grid Construction}
 
-Synthetic stellar populations are generated using SPISEA \citep{Hosek2020}. The analysis adopts the merged Baraffe--Pisa--Ekstr\"om--PARSEC evolutionary model grid used by the forward-modeling pipeline. Synthetic photometry is calculated with the BT-Settl 2015 stellar-atmosphere models.
+Synthetic stellar populations are generated using SPISEA \citep{Hosek2020}. This follows the synthetic CMD framework of \citet{Zhang2024}, which interpolated simulated stellar masses and ages onto SPISEA isochrones to generate photometric diagrams. The analysis adopts the merged Baraffe--Pisa--Ekstr\"om--PARSEC evolutionary model grid used by the forward-modeling pipeline. Synthetic photometry is calculated with the BT-Settl 2015 stellar-atmosphere models.
 
 The isochrone grid spans ages from 1 to 20 Myr in intervals of 0.5 Myr. We assume solar metallicity, zero extinction ($A_{K_s}=0$), and a distance of 410 pc. The same stellar-evolution and photometric assumptions are held fixed throughout the simulation ensemble so that changes in diagram morphology arise from changes in the underlying simulated stellar population rather than from changes in the synthetic-observation model.
 
@@ -498,7 +489,8 @@ Figure~\ref{fig:cmd-binaries} illustrates the limiting cases in which all binary
 \label{sec:binary-resolution-method}
 The all-resolved and all-unresolved cases provide useful limiting examples, but a real observation generally lies between these extremes. We therefore perform an additional angular-resolution experiment to estimate which binary systems would be resolved by JWST or HST for a nearby young cluster.
 
-This experiment uses a representative simulation with
+\textbf{
+This experiment uses a representative simulation with}
 
 \begin{equation}
 M_{\rm cl}=3000\,M_\odot,
@@ -508,7 +500,7 @@ M_{\rm cl}=3000\,M_\odot,
 \epsilon_{\rm ff}=0.03,
 \end{equation}
 
-using seed 00. The experiment is intended as a test of the observational effect of binary resolution rather than as a second full ensemble analysis.
+\textbf{using seed 00 \textcolor{red}{(this sentence will probably change after redoing the $M_{cl}$ experiment)}.} The experiment is intended as a test of the observational effect of binary resolution rather than as a second full ensemble analysis.
 
 The binary population is determined independently at each simulation snapshot. Thus, the calculation follows the current binary systems rather than assuming that all primordial pairs remain unchanged throughout the simulation. Binary disruption, dynamical formation, exchanges, and orbital evolution can therefore alter both the binary population and the instantaneous component separations.
 
@@ -555,7 +547,7 @@ Together with the H--R diagram, these projections allow us to determine whether 
 \subsection{Definition of the Measurement Region}
 \label{sec:measurement-region}
 
-The morphology statistic is measured over a restricted portion of the low-mass pre--main-sequence population. A star is eligible for the diagram-spread analysis only when 3000 K $\leq T_{ eff} \leq$ 3600 K. The measurement geometry is fixed for all cluster ages and all simulations.
+The morphology statistic is measured over a restricted portion of the low-mass pre--main-sequence population. A star is eligible for the diagram-spread analysis only when 3000 K $\leq T_{ eff} \leq$ 3600 K. The measurement geometry is fixed for all cluster ages and all simulations. This is motivated by \citet{Masegian2021}, which adopts the same measurement region and morphology statistic as a method of comparison to the Orion Nebula cluster, whose initial mass function peaks in the mass range corresponding to this range of effective temperature \citep{DaRio2016}. 
 
 In H--R space, the interval from 3000 to 3600 K is divided directly into six 100 K bins,
 \begin{equation}
@@ -576,7 +568,7 @@ This procedure provides a common low-mass stellar interval across the different 
 \subsection{Diagram Morphology Quantification}
 \label{sec:spread-metric}
 
-We quantify the vertical extent of the stellar sequence using the separation between the lower and upper quartiles of the distribution in each horizontal bin. The method follows the luminosity-spread approach of \citet{Masegian2021}, adapted here for both H--R and CMD space.
+We quantify the vertical extent of the stellar sequence using the separation between the lower and upper quartiles of the distribution in each horizontal bin. Motivated by \citet{Masegian2021}, who linked luminosity spread in synthetic H--R diagrams to intrinsic stellar age spread, we adapt this quartile-tail approach for both H--R and CMD space.
 
 For a valid horizontal bin $j$, the 25th and 75th percentiles of the vertical coordinate are first calculated. We then compute the mean vertical coordinate of the stars in the lower quartile and the mean vertical coordinate of the stars in the upper quartile.
 
@@ -653,6 +645,10 @@ For each mass and surface density, one representative simulation realization is 
 A single realization is used at each mass because the number of available simulations differs substantially between the three mass suites. For each $(\Sigma_{\rm cloud},\epsilon_{\rm ff})$ combination, the $300\,M_\odot$ suite contains 200 realizations, the $3000\,M_\odot$ suite contains 20, and the $30000\,M_\odot$ suite contains only two. An all-realization comparison would therefore have strongly unequal sampling precision between the three mass scales. Conversely, restricting every mass to only two realizations would discard most of the available sampling at lower masses while still providing only a weak estimate of the realization variance at $30000\,M_\odot$.
 
 We consequently interpret the cluster-mass comparison as a qualitative sensitivity test rather than an ensemble measurement and do not attach realization-to-realization uncertainty bands to these curves. This treatment is also motivated by the relatively modest seed-to-seed scatter measured in the $3000\,M_\odot$ ensemble compared with the systematic differences observed between the three cluster masses.
+
+
+
+
 
 \section{Results \& Analysis} \label{sec:results}
 
@@ -803,7 +799,7 @@ The time sequence also illustrates that binary resolution changes primarily the 
     binaries are dark blue, and dynamically formed binaries are dark red
     regardless of their resolution state. The Rayleigh-limited population
     visually resembles the all-unresolved limit because most binary systems
-    remain unresolved at the adopted distance of 410 pc. Also note the seldom and fleeting appearances of red points representing dynamically formed binaries, which shows how rare and short-lived such systems are in these cluster simulations. \textbf{\textcolor{red}{INCREASE LEGEND FONT SIZE ON THIS FIGURE}}}
+    remain unresolved at the adopted distance of 410 pc. Also note the seldom appearances of dynamically formed binaries from snapshot to snapshot, which shows how rare and short-lived such systems are in these cluster simulations. This is consistent with \citet{Farias2023}, which finds that less than 1\% of binaries are dynamically formed in $3000 M_\odot$ cluster simulations. \textbf{\textcolor{red}{INCREASE LEGEND FONT SIZE ON THIS FIGURE}}}
     \label{fig:binary-resolution-time-evolution}
 \end{figure*}
 
