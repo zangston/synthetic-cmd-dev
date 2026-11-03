@@ -239,6 +239,14 @@ Gothenburg, Sweden}
 \affiliation{University of Texas at Austin, Department of Astronomy \\
 Austin, TX 78712, USA}
 
+\author[0000-0003-2874-1196]{Matthew W. Hosek Jr.}
+\affiliation{University of California, Los Angeles, Department of Astronomy \\
+Los Angeles, CA 90095, USA}
+
+\author[0000-0002-4855-1325]{Joseph J Armstrong}
+\affiliation{Chalmers University of Technology, Department of Space, Earth \& Environment \\
+Gothenburg, Sweden}
+
 %\author{Aabha Brizawasi}
 %\affiliation{Indian Institute of Science Education and Research \\
 % Mohali, India}
@@ -267,8 +275,15 @@ Gothenburg, Sweden}
 
 %% Mark off the abstract in the ``abstract'' environment. 
 \begin{abstract}
+The morphology of pre--main-sequence stellar populations in color--magnitude diagrams (CMDs) and Hertzsprung--Russell (H--R) diagrams provides a potential diagnostic of the star-formation histories of young stellar clusters. We investigate the relationship between the physical characteristics of a molecular clump and a resultant protocluster's CMD morphology using a forward-modeling framework that combines Nbody6 cluster formation simulations with synthetic photometry generated using SPISEA. We construct synthetic H--R diagrams and JWST/HST CMDs and quantify their vertical spread using a quartile-tail separation statistic.
 
-placeholder abstract
+Analyzing a suite of simulations spanning two cloud surface densities ($\Sigma_{\rm cloud}$) and five star formation efficiencies per free-fall time ($\epsilon_{\rm ff}$), we find that lower $\epsilon_{\rm ff}$ and lower $\Sigma_{\rm cloud}$ produce longer formation timescales, larger intrinsic stellar age spreads, and broader stellar sequences. These trends persist across multiple photometric projections, although the measured spread depends on isochrone geometry. 
+% Add the following sentence back if we decide to include M_cl comparison
+% A comparison of $300$, $3000$, and $30000\,M_\odot$ protoclusters indicates that increasing cluster mass delays and generally increases the maximum diagram spread. 
+We additionally find that unresolved binaries introduce an approximately additive increase in CMD spread without substantially changing its
+temporal evolution. At 410 pc, approximately 70--80\% of binary systems remain unresolved under the adopted JWST and HST resolution criteria.
+
+Our results demonstrate that CMD and H--R diagram morphology retains information about cluster formation histories, but diagram width cannot uniquely determine intrinsic age spread without accounting for cloud properties, stellar evolution, and observational resolution.
 
 \end{abstract}
 
@@ -278,7 +293,14 @@ placeholder abstract
 %% You will be asked to selected these concepts during the submission process
 %% but this old "keyword" functionality is maintained in case authors want
 %% to include these concepts in their preprints.
-\keywords{}
+\keywords{
+Star formation (1569) ---
+Star clusters (1567) ---
+Pre-main sequence stars (1290) ---
+Stellar evolution (1599) ---
+Hertzsprung Russell diagram (725) ---
+Stellar populations (1622)
+}
 
 %% From the front matter, we move on to the body of the paper.
 %% Sections are demarcated by \section and \subsection, respectively.
@@ -295,14 +317,37 @@ placeholder abstract
 %% tied to the reference list via symbolic KEYs. The KEY corresponds
 %% to the KEY in the \bibitem in the reference list below. 
 
-\section{Introduction} \label{sec:intro}
-placeholder intro
+\section{Introduction}
+\label{sec:intro}
+
+The formation of stellar clusters is a fundamental component of the star-formation process in galaxies, linking the physical evolution of molecular clouds to the properties of stellar populations. Most stars form in clustered or spatially associated environments, where their evolution is influenced by the dynamical conditions of their parent clouds, as well as interactions with neighboring stars. Therefore, understanding how these systems assemble therefore connecting the physical conditions of star-forming molecular clouds to the observable properties of the stellar populations that they produce.
+
+An important question in cluster formation is the timescale over which a stellar population assembles. Star formation may occur relatively rapidly, producing a population whose members have nearly identical ages, or proceed over an extended interval, producing a cluster containing stars with a substantial disparity of formation times. The duration of star formation is expected to depend on the physical properties of the parent molecular cloud, including its density, freefall timescale, and efficiency of converting gas into stars. Consequently, measurements of stellar age distributions provide a potential means of constraining the physical processes governing cluster formation.
+
+Directly determining the formation history of a young stellar cluster from observations, however, presents several challenges. Individual stellar ages are generally inferred by comparing observed stellar properties with theoretical evolutionary models. This comparison is commonly performed using Hertzsprung--Russell (H--R) diagrams or color--magnitude diagrams (CMDs), in which the observed stellar population is compared with theoretical isochrone curves. The location of a star relative to these isochrones provides an estimate of its evolutionary state and, under appropriate assumptions, its age.
+
+The interpretation of these diagrams is complicated by the fact that stars of different ages do not occupy completely distinct regions of parameter space. During pre--main-sequence evolution, changes in stellar luminosity and effective temperature produce age-dependent shifts in the stellar sequence. A population containing stars formed over a range of times may therefore occupy a broader region of an H--R diagram or CMD than a coeval population. In principle, this broadening provides an observational signature of an extended star-formation history. Nevertheless, the width of a stellar sequence is not determined by age spread alone. The geometry of pre--main-sequence evolutionary tracks changes with age, and the transformation from effective temperature and luminosity into observable photometric magnitudes and colors introduces additional nonlinearities. As a result, the same intrinsic age distribution may produce different apparent widths in different CMD projections. 
+
+Observational effects introduce further complications. For example, in unresolved binary systems, the combined light of multiple stellar components are attributed to a single photometric source. These systems can appear brighter than individual stars of comparable mass and age, broadening the observed stellar sequence even without an increase in the intrinsic age spread. Additionally, effects such as extinction, photometric uncertainty, incompleteness, and background contamination can introduce additional CMD/H--R scatter. Therefore, distinguishing these contributions from the broadening produced by an extended star-formation history is essential when interpreting observed young clusters.
+
+A useful approach to investigating these effects is forward modeling, in which a physically motivated simulation of cluster formation is transformed into the same observable parameter space used to study real stellar populations. Rather than inferring stellar ages independently from an observed diagram, forward modeling begins with a simulated population whose stellar masses, formation times, and dynamical history are known. Stellar-evolution models can then be used to predict the effective temperatures, luminosities, and photometric magnitudes of the simulated stars at successive stages of cluster evolution.
+
+This approach provides a direct connection between the physical parameters controlling cluster formation and the resulting stellar diagram morphology. It also permits controlled experiments in which individual formation parameters or observational assumptions are varied while other aspects of the stellar population are held fixed. By examining how the synthetic diagrams respond to these changes, one can determine which morphological features are associated with the underlying star-formation history and which arise from the choice of photometric representation or observational treatment.
+
+In this work, we investigate the relationship between protocluster formation histories and synthetic H--R and CMD morphology using numerical simulations of forming stellar clusters. We combine the Nbody6 protocluster simulations of \citet{Farias2019} with stellar-evolution models and synthetic photometry generated using SPISEA \citep{Hosek2020}. Building on the luminosity-spread analysis of \citet{Masegian2021} and the synthetic CMD framework developed by \citet{Zhang2024}, we examine how the vertical extent of the pre--main-sequence stellar population responds to changes in the physical conditions of cluster formation. The principal objective of this study is to establish how the physical parameters and formation histories of simulated protoclusters are reflected in the morphology of their synthetic stellar diagrams. 
+
+The remainder of this paper is organized as follows. Section~\ref{sec:related} reviews the numerical and synthetic-photometry studies upon which this work builds. Section~\ref{sec:methods} describes the protocluster simulations, stellar interpolation, synthetic diagram construction, and morphology measurements. Section~\ref{sec:results} presents the evolution of intrinsic stellar age spreads and synthetic diagram widths, their dependence on cluster-formation parameters, and the effects of binary angular resolution. Finally, Section~\ref{sec:conclusion} summarizes the principal findings and discusses their implications for interpreting observed young stellar populations.
+
+\textcolor{red}{AG: Introduction should probably end here. Also add relevant references to the whole Introduction section. Essentially, a literature review of what has been done before.} 
 
 
 
 
 
 \section{Related Work}\label{sec:related}
+
+\textcolor{red}{AG: Shorten this section and move and spread it across the relevant subsections of Methods.}
+
 The formation and early evolution of star clusters have been explored extensively through numerical simulations that couple gravitational dynamics with prescriptions for star formation. In particular, \citet{Farias2019} present Nbody6 simulations of protoclusters forming within collapsing molecular clouds, demonstrating that the cloud surface density and star formation efficiency per freefall time ($\epsilon_{\mathrm{ff}}$) regulate both the duration of star formation and the resulting stellar age spread. These simulations provide a physically motivated link between cloud-scale properties and observable stellar populations.
 
 Synthetic diagram modeling has previously been used to connect such simulations to observable parameter spaces. \citet{Masegian2021} generated synthetic Hertzsprung–Russell (H–R) diagrams by interpolating stellar masses and ages from cluster simulations onto theoretical isochrones, quantifying the relationship between age spread and luminosity dispersion. That work established that luminosity spread in H–R space is positively correlated with the underlying stellar age spread induced by extended star formation histories.
@@ -313,9 +358,13 @@ Together, these prior works establish a forward relationship between cloud physi
 
 \section{Methods} \label{sec:methods}
 
-We develop a forward-modeling framework that links protocluster formation simulations to observable color--magnitude diagrams (CMDs) and Hertzsprung--Russell (H--R) diagrams. The methodology combines numerical cluster simulations with stellar-evolution models and synthetic photometry in order to map simulated stellar masses and ages into theoretical and observable diagram spaces. We then quantify the morphology of the resulting stellar sequences and examine how that morphology depends on the star-formation history of the parent protocluster.
+We develop a forward-modeling framework that links protocluster formation simulations to CMDs and H--R diagrams. The methodology combines numerical cluster simulations with stellar-evolution models and synthetic photometry to map simulated stellar masses and ages into theoretical and observable diagram spaces. We then quantify the morphology of the resulting stellar sequences and examine how that morphology depends on the star-formation history of the parent protocluster.
 
 The forward-modeling pipeline combines protocluster simulations from \citet{Farias2019} with synthetic photometry generated using SPISEA \citep{Hosek2020}. Stellar masses and ages extracted from Nbody6 simulations are interpolated onto a grid of theoretical isochrones. The resulting stellar populations are analyzed both in H--R space, using effective temperature and luminosity, and in several photometric CMD projections.
+
+Our primary analysis focuses on a suite of $3000\,M_\odot$ molecular clumps spanning two cloud surface densities and five star formation efficiencies per free-fall time. By analyzing multiple realizations of each parameter combination, we distinguish systematic changes in diagram morphology from stochastic variation between individual simulated clusters. We quantify the vertical spread of the stellar sequence in H--R space and in three CMD projections constructed using JWST and HST photometric filters, and compare these measurements with the intrinsic stellar age distributions of the simulated populations.
+
+We additionally investigate two effects that extend beyond the primary parameter ensemble. First, we compare representative simulations with initial clump masses of $300$, $3000$, and $30000\,M_\odot$ to examine how the characteristic mass scale of a forming cluster influences the development and magnitude of diagram spread. Second, we examine the observational consequences of binary angular resolution by comparing fully resolved, fully unresolved, and telescope-resolution-limited representations of the same simulated population. These experiments allow us to assess both the physical and observational contributions to the measured width of a young stellar sequence.
 
 \subsection{Protocluster Simulations}
 
@@ -324,6 +373,8 @@ We utilize Nbody6 simulations presented in \citet{Farias2019}, which model the g
 The primary cloud-scale parameters considered here are the cloud surface density $\Sigma_{\rm cloud}$ and the star formation efficiency per free-fall time $\epsilon_{\rm ff}$. The parameter $\epsilon_{\rm ff}$ regulates how rapidly stars are introduced relative to the free-fall time of the parent cloud. Lower values therefore produce more extended star-formation histories, while larger values approach increasingly rapid formation. The cloud surface density also changes the dynamical and formation timescales of the protocluster and consequently affects the stellar age distribution.
 
 At a specified cluster time $t_{\rm cl}$, an Nbody6 snapshot is converted into a stellar population containing the masses and ages of the stars present at that epoch. These quantities form the input to the stellar-evolution and synthetic-photometry interpolation described below.
+
+\textcolor{red}{AG: We may need to explain the Turbulent Clump Core Accretion (TCCA) paradigm of models a bit more in above paragraphs. Refer to section 2.1 of my most recent paper on stellar clustering: https://doi.org/10.1093/mnras/stag1721.}
 
 \subsection{Simulation Parameter Grid}
 \label{sec:simulation-grid}
@@ -341,15 +392,15 @@ and five values of the star formation efficiency per free-fall time,
 0.01,\ 0.03,\ 0.10,\ 0.30,\ 1.00.
 \end{equation}
 
-Each combination of $\Sigma_{\rm cloud}$ and $\epsilon_{\rm ff}$ is represented by 20 independent realizations, identified by seed numbers 00--19. The full analysis therefore contains 200 finite-formation simulations.
+Each combination of $\Sigma_{\rm cloud}$ and $\epsilon_{\rm ff}$ is represented by 20 independent realizations, identified by seed numbers 00--19. The full analysis therefore contains 200 gradual cluster formation simulations.
 
 For a fixed cloud surface density, simulations with the same seed but different $\epsilon_{\rm ff}$ values contain the same underlying set of stellar masses sampled from the initial mass function. Changing $\epsilon_{\rm ff}$ for a fixed seed primarily changes the times at which these stars are introduced into the cluster. This enables controlled same-seed comparisons in which differences in stellar population morphology can be associated with the star-formation history rather than with a different random realization of the initial mass function.
 
 For ensemble measurements, all 20 realizations of a given $(\Sigma_{\rm cloud},\epsilon_{\rm ff})$ combination are analyzed independently. We report the arithmetic mean across the contributing seeds, while the realization-to-realization scatter is characterized by the sample standard deviation. The resulting standard-deviation bands therefore represent stochastic variation between cluster realizations rather than uncertainty in the ensemble mean.
 
 \begin{deluxetable}{ccc}
-\tablecaption{$3000\,M_\odot$ Protocluster Simulation Grid
-\label{tab:simulation-grid}}
+\tablecaption{$3000\,M_\odot$ Protocluster Simulation Grid. \textcolor{red}{Refer to Table 1 of same stellar clustering paper and add the relevant columns. Maybe only add $\epsilon_{\rm ff}$=0.03 lines for M300 and M30000 cases since we analyze them.}}
+\label{tab:simulation-grid}
 \tablehead{
 \colhead{$\Sigma_{\rm cloud}$ (${\rm g\,cm^{-2}}$)} &
 \colhead{$\epsilon_{\rm ff}$} &
@@ -369,7 +420,7 @@ For ensemble measurements, all 20 realizations of a given $(\Sigma_{\rm cloud},\
 \enddata
 \end{deluxetable}
 
-The full ensemble analysis presented in this work is based on the $M_{\rm cl}=3000\,M_\odot$ simulation suite. The additional $M_{\rm cl}=300$ and $30000\,M_\odot$ simulations are used only for the controlled mass-dependence experiment described below and are not incorporated into the multi-seed ensemble statistics.
+% The full ensemble analysis presented in this work is based on the $M_{\rm cl}=3000\,M_\odot$ simulation suite. The additional $M_{\rm cl}=300$ and $30000\,M_\odot$ simulations are used only for the controlled mass-dependence experiment described below and are not incorporated into the multi-seed ensemble statistics.
 
 \subsection{Isochrone Grid Construction}
 
@@ -377,7 +428,7 @@ Synthetic stellar populations are generated using SPISEA \citep{Hosek2020}. The 
 
 The isochrone grid spans ages from 1 to 20 Myr in intervals of 0.5 Myr. We assume solar metallicity, zero extinction ($A_{K_s}=0$), and a distance of 410 pc. The same stellar-evolution and photometric assumptions are held fixed throughout the simulation ensemble so that changes in diagram morphology arise from changes in the underlying simulated stellar population rather than from changes in the synthetic-observation model.
 
-Photometry is generated in the JWST F070W, F182M, and F200W filters and the HST F555W and F814W filters. These bands permit the construction of several CMD projections with substantially different isochrone geometries.
+Photometry is generated in the JWST F070W, F182M, and F200W filters and the HST F555W and F814W filters. 
 
 \subsection{Photometric Interpolation}
 
@@ -631,7 +682,9 @@ At early times, the population contains a substantial fraction of very young, lu
 
 \subsection{Dependence on Diagram Space}
 
-The same stellar population can have substantially different apparent morphology depending on the coordinate system in which it is viewed. Figure~\ref{fig:analysis-geometry} compares the H--R diagram to the three CMD projections included in the ensemble analysis.
+\textcolor{red}{AG: I was thinking this section could be moved to Methods since it motivates why we cannot fix color intervals for comparing different CMDs. Perhaps as part of or after section 3.7.}
+
+The same stellar population can have substantially different apparent morphology depending on the set of filters in which the color-magnitude diagrams are made. Figure~\ref{fig:analysis-geometry} compares the H--R diagram to the three CMD projections included in the ensemble analysis.
 
 In H--R space, the low-mass pre--main-sequence tracks remain relatively well ordered in effective temperature and luminosity. The transformation into photometric space alters both the slope and curvature of these tracks. In particular, the same $3000$--$3600$ K stellar interval can span very different ranges in color depending on the adopted filter pair.
 
@@ -643,8 +696,8 @@ Figure~\ref{fig:age-spread-vs-time} shows the ensemble-averaged intrinsic age sp
 
 A clear ordering with $\epsilon_{\rm ff}$ emerges. Simulations with lower $\epsilon_{\rm ff}$ develop larger stellar age spreads because star formation proceeds over a longer interval. Conversely, the highest-efficiency simulations form their stellar populations more rapidly and consequently maintain substantially narrower age distributions.
 
-The cloud surface density introduces a second systematic dependence. At fixed $\epsilon_{\rm ff}$, the $\Sigma_{\rm cloud}=0.1\,{\rm g\,cm^{-2}}$ simulations generally develop larger age spreads than the $\Sigma_{\rm cloud}=1.0\,{\rm g\,cm^{-2}}$ simulations. The lower-density clouds therefore produce more temporally extended stellar populations in the simulation suite considered here.
-
+The cloud surface density introduces a second systematic dependence. At fixed $\epsilon_{\rm ff}$, the $\Sigma_{\rm cloud}=0.1\,{\rm g\,cm^{-2}}$ simulations generally develop larger age spreads than the $\Sigma_{\rm cloud}=1.0\,{\rm g\,cm^{-2}}$ simulations. The lower-density clouds therefore produce more temporally extended stellar populations in the simulation suite considered here. \textcolor{red}{Once we present the details of our Turbulent Clump Core Accretion models in Methods, it will be clearer to the reader that for the same $M_{\rm cl}$ and $\epsilon_{\rm ff}$, $\Sigma_{\rm cloud}$ has shorter free-fall timescales ($t_{\rm ff}$) and thus shorter star formation time ($t_\star = (\epsilon/\epsilon_{\rm ff})t_{\rm ff}$). This is the reason why age spreads are larger for smaller $\Sigma_{\rm cloud}$.}
+ 
 At early cluster times, $\Delta t_{90}$ grows as newly formed stars continue to extend the age distribution. Once star formation has largely ceased, the difference between the oldest and youngest major components of the population approaches a characteristic value and the age-spread curves flatten.
 
 \begin{figure*}
@@ -669,7 +722,7 @@ Some temporal structure also remains after averaging over 20 realizations. Diagr
 \begin{figure*}
     \centering
     \includegraphics[width=1\linewidth]{science-images/fig_ensemble_spread_vs_time_all_spaces.png}
-    \caption{Ensemble quartile-tail diagram spread as a function of cluster time in H--R space and the three analyzed CMD projections. Columns correspond to the two cloud surface densities. Finite-formation curves show the mean across simulation seeds, with shaded regions indicating the sample standard deviation. Lower $\epsilon_{\rm ff}$ and lower $\Sigma_{\rm cloud}$ produce systematically broader stellar sequences.}
+    \caption{Ensemble quartile-tail diagram spread as a function of cluster time in H--R space and the three analyzed CMD projections. Columns correspond to the two cloud surface densities. Gradual formation models show the mean across simulation seeds, with shaded regions indicating the sample standard deviation. Lower $\epsilon_{\rm ff}$ and lower $\Sigma_{\rm cloud}$ produce systematically broader stellar sequences.}
     \label{fig:spread-vs-time}
 \end{figure*}
 
@@ -686,7 +739,7 @@ The simulation families occupy different regions of this relation because both $
 \begin{figure*}
     \centering
     \includegraphics[width=1\linewidth]{science-images/fig_ensemble_spread_vs_age_spread_all_spaces.png}
-    \caption{Ensemble diagram spread as a function of intrinsic stellar age spread $\Delta t_{90}$ for the H--R diagram and three CMD projections. Each sequence traces the evolution of a simulation family through cluster time. Larger intrinsic age spreads generally correspond to broader stellar sequences, with low-$\epsilon_{\rm ff}$ and low-$\Sigma_{\rm cloud}$ models preferentially occupying the high-spread region. Error bars indicate the realization-to-realization sample standard deviation.}
+    \caption{Ensemble diagram spread as a function of intrinsic stellar age spread $\Delta t_{90}$ for the H--R diagram and three CMD projections. Each sequence traces the evolution of a simulation family through cluster time. Larger intrinsic age spreads generally correspond to broader stellar sequences, with low-$\epsilon_{\rm ff}$ and low-$\Sigma_{\rm cloud}$ models preferentially occupying the high-spread region. Error bars indicate the realization-to-realization sample standard deviation. \textcolor{red}{AG: For this figure, you could try log-scale on the x-axis to check if that shows the high $\epsilon_{\rm ff}$ models better. They will stay as vertical lines, however the value of age-spread could become clearer to see.}}
     \label{fig:spread-vs-age-spread}
 \end{figure*}
 
@@ -770,7 +823,7 @@ These trends are recovered after averaging over the full 20-seed ensembles and a
 
 The primary ensemble analysis holds the initial cluster mass fixed at $M_{\rm cl}=3000\,M_\odot$. To determine whether the characteristic spread also depends on the mass scale of the forming system, we repeat the time-dependent spread analysis for representative $M_{\rm cl}=300$, $3000$, and $30000\,M_\odot$ simulations at fixed $\epsilon_{\rm ff}=0.03$. Figure~\ref{fig:mass-spread-evolution} shows the result for both cloud surface densities in H--R space and in the three CMD projections.
 
-A systematic dependence on cluster mass is visible in both surface-density environments. Increasing $M_{\rm cl}$ shifts the development of the diagram spread toward later cluster times and generally allows the population to reach a larger maximum spread. The $300\,M_\odot$ simulations develop and reach their characteristic maximum spread earliest, the $3000\,M_\odot$ models evolve on an intermediate timescale, and the $30000\,M_\odot$ simulations continue building a broad stellar population for substantially longer.
+A systematic dependence on cluster mass is visible in both surface-density environments. Increasing $M_{\rm cl}$ shifts the development of the diagram spread toward later cluster times and generally allows the population to reach a larger maximum spread. The $300\,M_\odot$ simulations develop and reach their characteristic maximum spread earliest, the $3000\,M_\odot$ models evolve on an intermediate timescale, and the $30000\,M_\odot$ simulations continue building a broad stellar population for substantially longer. \textcolor{red}{This links to the fact that star cluster formation timescale ($t_\star$) scales with $M_{\rm cl}$ in our Turbulent Clump Core Accretion models.}
 
 This behavior follows naturally from the formation timescales of the underlying simulation models. At fixed $\Sigma_{\rm cloud}$ and $\epsilon_{\rm ff}$, increasing the total clump mass increases the characteristic time required to assemble the stellar population. Star formation therefore remains active for a longer absolute time in the more massive systems. Because stars continue to be introduced over this extended interval, the stellar population develops a larger absolute age spread before formation terminates, which in turn produces a broader vertical distribution in both H--R and CMD space.
 
@@ -789,6 +842,7 @@ The same qualitative ordering appears at both $\Sigma_{\rm cloud}=0.1$ and $1.0\
 
 The individual CMD evolution underlying these spread curves is shown in Appendix~\ref{app:mass-cmd-evolution}. In the more massive simulations, the stellar population remains distributed across a broader range of isochrone ages for a longer interval, visually demonstrating the extended formation history responsible for the delayed and enhanced spread.
 
+\textbf{\textcolor{red}{AG: The subsequent subsections could go to the Discussion section.}}
 \subsection{Implications for Synthetic CMD Diagnostics}
 
 The ensemble and sensitivity analyses establish a forward connection between cloud-scale star-formation parameters, cluster mass, intrinsic stellar age distributions, and observable diagram morphology. In the simulations considered here, lower $\epsilon_{\rm ff}$ and lower $\Sigma_{\rm cloud}$ both produce more extended star-formation histories and larger diagram spreads. The cluster-mass experiment additionally shows that, at fixed $\epsilon_{\rm ff}$ and $\Sigma_{\rm cloud}$, increasing $M_{\rm cl}$ lengthens the absolute formation timescale, delays the peak in diagram spread, and generally allows a larger maximum spread to develop. Thus, CMD or H--R diagram width should not be interpreted as depending on a single cluster-formation parameter in isolation.
@@ -803,8 +857,46 @@ The forward-modeling framework therefore provides a basis for connecting observe
 
 
 
-\section{Conclusion} \label{sec:conclusion}
-placeholder conclusion
+\section{Conclusion}
+\label{sec:conclusion}
+
+We have investigated the relationship between protocluster formation histories and the morphology of synthetic color--magnitude and Hertzsprung--Russell diagrams. By combining Nbody6 simulations of forming stellar clusters with stellar-evolution models and synthetic photometry generated using SPISEA, we have developed a forward-modeling framework that connects the physical parameters governing cluster formation to the observable distribution of pre--main-sequence stars.
+
+Our primary analysis considered 200 simulations of $3000\,M_\odot$ molecular clumps spanning two cloud surface densities, five star formation efficiencies per free-fall time, and 20 independent realizations per parameter combination. We quantified the vertical extent of the stellar sequences using a quartile-tail spread statistic measured over a fixed low-mass region of each diagram. Comparing these measurements with the intrinsic stellar age distributions revealed several principal results.
+
+\begin{enumerate}
+
+    \item \textbf{Star formation efficiency regulates intrinsic stellar age spread and diagram morphology.} Lower values of $\epsilon_{\rm ff}$ produce more extended star-formation histories and consequently larger intrinsic stellar age spreads. These populations generally exhibit broader stellar sequences in both H--R and CMD space. Conversely, clusters formed with higher $\epsilon_{\rm ff}$ assemble their stellar populations more rapidly and exhibit narrower age distributions and smaller diagram spreads.
+
+    \item \textbf{Cloud surface density introduces
+    an additional systematic dependence.} At fixed $\epsilon_{\rm ff}$, simulations with $\Sigma_{\rm cloud}=0.1\,{\rm g\,cm^{-2}}$ generally develop larger intrinsic age spreads and broader stellar sequences than those with $\Sigma_{\rm cloud}=1.0\,{\rm g\,cm^{-2}}$. This reflects the longer characteristic formation timescales of the lower-density molecular clouds and demonstrates that diagram morphology retains information about the physical conditions of the parent cloud.
+
+    \item \textbf{The relationship between
+    intrinsic age spread and diagram width
+    persists across different photometric
+    representations.} The H--R diagram and the three synthetic CMD projections exhibit consistent qualitative trends with the underlying stellar age distribution. However, the absolute value and detailed time dependence of the measured spread differ between diagram spaces because of the nonlinear transformation of pre--main-sequence evolutionary tracks into photometric coordinates. Consequently, diagram spreads measured in different filter combinations are not directly interchangeable.
+
+    \item \textbf{Increasing cluster mass
+    generally increases the maximum diagram
+    spread and delays its development.} A targeted comparison of representative $300$, $3000$, and $30000\,M_\odot$ simulations at fixed $\epsilon_{\rm ff}=0.03$ indicates that more massive protoclusters develop broader stellar populations over longer absolute timescales. This behavior is consistent with the longer formation timescales of more massive molecular clumps at fixed cloud surface density and star formation efficiency. Because this experiment uses one realization per mass and surface density, the result is interpreted as a qualitative sensitivity test rather than an ensemble constraint on the mass dependence.
+
+    \item \textbf{Unresolved binary systems increase the measured CMD spread without substantially altering its overall temporal evolution.} Combining the light of binary components shifts unresolved systems toward brighter magnitudes and introduces an approximately additive contribution to the quartile-tail spread statistic. For a representative simulated cluster at 410 pc, approximately 70--80\% of current binary systems remain unresolved under the adopted JWST and HST Rayleigh criteria. The resulting spread curves lie substantially closer to the all-unresolved limit than to the all-resolved limit, while showing little dependence on the viewing projection.
+
+\end{enumerate}
+
+Taken together, these results establish that the vertical morphology of young stellar populations contains measurable information about their formation histories. In particular, the systematic relationship between the duration of star formation, intrinsic stellar age spread, and diagram width survives the transformation from theoretical H--R space into multiple observable CMD projections. The persistence of these trends across independent simulation realizations indicates that they reflect the underlying cluster-formation physics rather than solely stochastic differences in the sampled stellar populations.
+
+At the same time, our results demonstrate that diagram width is not a unique indicator of intrinsic stellar age spread. Different combinations of cloud surface density, star formation efficiency, and cluster mass can produce extended star-formation histories and consequently similar broadening of the stellar sequence. Furthermore, unresolved multiplicity modifies the absolute normalization of the measured CMD spread, while the geometry of the stellar evolutionary tracks determines how a given age distribution is expressed in different photometric systems. These effects must be considered when interpreting the observed width of a pre--main-sequence population.
+
+\textcolor{red}{AG: need to shorten the Conclusion and avoid repetition of statements.}
+
+\textcolor{red}{AG: Limitations and caveats can be added as a sub-section in Discussion section.}
+
+Several limitations remain in applying the present results directly to observed clusters. Our synthetic photometry assumes a common distance, solar metallicity, and zero extinction, and the ensemble analysis does not include observational photometric uncertainties, completeness effects, or field-star contamination. The binary-resolution experiment accounts for the projected separations of bound binary systems but does not model the blending of unrelated sources or the full instrumental point-spread function. These simplifications allow the effects of intrinsic cluster formation and binary multiplicity to be examined separately, but more complete synthetic observations will be required for quantitative comparisons with individual observed clusters.
+
+Future work can extend the framework by incorporating realistic extinction distributions, photometric uncertainties, crowding, and instrumental selection effects. A broader ensemble analysis across cluster mass would also allow the mass dependence identified here to be quantified statistically. Ultimately, these developments would support the comparison of observed young clusters with physically motivated synthetic populations, allowing their formation histories and underlying cloud conditions to be constrained using observable CMD morphology.
+
+The present study provides a forward-modeling foundation for such comparisons by establishing which features of synthetic pre--main-sequence diagrams are sensitive to the duration and physical conditions of cluster formation, and by identifying unresolved multiplicity as an important additional contribution to their observed width.
 
 %% IMPORTANT! The old "\acknowledgment" command has be depreciated. It was
 %% not robust enough to handle our new dual anonymous review requirements and
